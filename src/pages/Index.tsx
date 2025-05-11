@@ -1,11 +1,34 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Index = () => {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background">
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+      
+      <div className="text-center max-w-lg">
+        <h1 className="text-4xl font-bold mb-6">Music Tools</h1>
+        <p className="text-xl text-muted-foreground mb-8">
+          Interactive music tools for playing and creating music
+        </p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-md mx-auto">
+          <Link to="/chord-player">
+            <Button variant="default" className="w-full text-lg py-6">
+              Chord Player
+            </Button>
+          </Link>
+          
+          <Link to="/drum-machine">
+            <Button variant="default" className="w-full text-lg py-6">
+              Drum Machine
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );

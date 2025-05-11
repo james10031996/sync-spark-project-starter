@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -98,4 +99,9 @@
   body {
     @apply bg-background text-foreground;
   }
+}
+
+/* Custom CSS for drum machine grid */
+.grid-cols-16 {
+  grid-template-columns: repeat(16, minmax(0, 1fr));
 }
