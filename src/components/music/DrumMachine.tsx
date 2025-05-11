@@ -3,7 +3,7 @@ import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Play, Square, Square2 } from "lucide-react";
+import { Play, Square } from "lucide-react";
 import { useDrumKeyboardControls } from "@/hooks/useDrumKeyboardControls";
 
 // Define drum sounds
@@ -465,7 +465,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
           className="w-full"
         >
           {playing ? (
-            <><Square2 className="mr-2 h-4 w-4" /> Stop</>
+            <><Square className="mr-2 h-4 w-4" /> Stop</>
           ) : (
             <><Play className="mr-2 h-4 w-4" /> Start</>
           )}
