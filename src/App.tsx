@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ChordPlayerPage from "./pages/ChordPlayerPage";
+import ChordProgressionPage from "./pages/ChordProgressionPage";
 import DrumMachinePage from "./pages/DrumMachinePage";
 import MetronomePage from "./pages/MetronomePage";
 
@@ -21,6 +22,7 @@ const App = () => (
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/chord-player" element={<ChordPlayerPage />} />
+          <Route path="/chord-progression" element={<ChordProgressionPage />} />
           <Route path="/drum-machine" element={<DrumMachinePage />} />
           <Route path="/metronome" element={<MetronomePage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

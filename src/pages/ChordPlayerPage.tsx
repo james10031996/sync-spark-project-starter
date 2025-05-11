@@ -55,6 +55,26 @@ const ChordPlayerPage: React.FC = () => {
             
             <Card>
               <CardContent className="pt-6">
+                <h2 className="text-xl font-semibold mb-4">Try Our Chord Progression Player</h2>
+                <p className="mb-4">
+                  Ready to create full chord progressions? Our Chord Progression Player lets you:
+                </p>
+                <ul className="list-disc pl-5 mb-4 space-y-1">
+                  <li>Create sections with multiple chords</li>
+                  <li>Play progressions with different instruments</li>
+                  <li>Adjust tempo and generate chord sequences</li>
+                  <li>Create complete song structures</li>
+                </ul>
+                <div className="flex justify-center mt-4">
+                  <Link to="/chord-progression">
+                    <Button>Try Chord Progression Player</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardContent className="pt-6">
                 <h2 className="text-xl font-semibold mb-4">Embed This Component</h2>
                 <p className="mb-4 text-sm text-muted-foreground">
                   You can easily embed this chord player into your own project with custom defaults:
