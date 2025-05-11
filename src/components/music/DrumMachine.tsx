@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Play, Square } from "lucide-react";
 import { useDrumKeyboardControls } from "@/hooks/useDrumKeyboardControls";
 
-// Define drum sounds
+// Define drum sounds with enhanced options
 const DRUM_SOUNDS = [
   { id: "kick", name: "Kick", color: "bg-red-500" },
   { id: "snare", name: "Snare", color: "bg-blue-500" },
@@ -91,16 +91,19 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
   const intervalRef = useRef<number | null>(null);
   const soundBuffers = useRef<Record<string, AudioBuffer>>({});
   
-  // Initialize audio context
+  // Initialize audio context with higher quality settings
   const initAudio = useCallback(async () => {
     if (!audioContext.current) {
-      audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)({
+        sampleRate: 48000, // Higher sample rate for better quality
+        latencyHint: 'interactive'
+      });
       
       // Wait for all sounds to be loaded
       await Promise.all(
         DRUM_SOUNDS.map(async (sound) => {
-          // Generate simple drum sounds since we're not loading samples
-          const buffer = await createDrumSound(sound.id, audioContext.current!);
+          // Generate enhanced drum sounds
+          const buffer = await createEnhancedDrumSound(sound.id, audioContext.current!);
           soundBuffers.current[sound.id] = buffer;
         })
       );
@@ -108,71 +111,156 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     return audioContext.current;
   }, []);
   
-  // Generate drum sounds programmatically
-  const createDrumSound = async (type: string, context: AudioContext): Promise<AudioBuffer> => {
+  // Generate enhanced drum sounds programmatically
+  const createEnhancedDrumSound = async (type: string, context: AudioContext): Promise<AudioBuffer> => {
     // Create a buffer for the sound
     let buffer: AudioBuffer;
     const sampleRate = context.sampleRate;
     
     switch (type) {
       case "kick": {
-        // Simple kick drum (low frequency sine wave with fast decay)
-        buffer = context.createBuffer(1, sampleRate * 0.5, sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
+        // Enhanced kick drum with sub frequencies and better attack
+        buffer = context.createBuffer(2, sampleRate * 0.6, sampleRate);
+        const dataLeft = buffer.getChannelData(0);
+        const dataRight = buffer.getChannelData(1);
+        
+        for (let i = 0; i < dataLeft.length; i++) {
           const t = i / sampleRate;
-          const frequency = 120 * Math.exp(-20 * t);
-          data[i] = Math.sin(2 * Math.PI * frequency * t) * Math.exp(-15 * t);
+          // Main frequency sweep
+          const frequency = 120 * Math.exp(-25 * t);
+          // Add punch at the start
+          const punchEnv = Math.exp(-200 * t);
+          const punch = Math.sin(2 * Math.PI * 180 * t) * punchEnv * 0.5;
+          // Add sub bass
+          const subFreq = 60 * Math.exp(-15 * t);
+          const sub = Math.sin(2 * Math.PI * subFreq * t) * 0.6;
+          
+          const mainSound = Math.sin(2 * Math.PI * frequency * t) * Math.exp(-15 * t);
+          
+          // Combine components
+          const combined = mainSound * 0.7 + punch * 0.2 + sub * 0.3;
+          
+          // Apply envelope
+          const env = Math.exp(-8 * t);
+          
+          // Slight stereo variation
+          dataLeft[i] = combined * env;
+          dataRight[i] = combined * env * 0.98; // Slight stereo effect
         }
         break;
       }
       case "snare": {
-        // Simple snare (noise + mid tone)
-        buffer = context.createBuffer(1, sampleRate * 0.3, sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
+        // Enhanced snare with body and noise components
+        buffer = context.createBuffer(2, sampleRate * 0.4, sampleRate);
+        const dataLeft = buffer.getChannelData(0);
+        const dataRight = buffer.getChannelData(1);
+        
+        for (let i = 0; i < dataLeft.length; i++) {
           const t = i / sampleRate;
-          // Noise component
-          const noise = Math.random() * 2 - 1;
-          // Tone component
-          const tone = Math.sin(2 * Math.PI * 250 * t);
-          data[i] = (noise * 0.7 + tone * 0.3) * Math.exp(-15 * t);
+          
+          // Body component (tone)
+          let toneEnv = Math.exp(-30 * t);
+          const tone1 = Math.sin(2 * Math.PI * 180 * t) * toneEnv * 0.5;
+          const tone2 = Math.sin(2 * Math.PI * 330 * t) * toneEnv * 0.3;
+          
+          // Noise component with filter simulation
+          const noise = (Math.random() * 2 - 1);
+          const noiseHP = noise - (Math.random() * 2 - 1) * 0.2; // Crude highpass
+          const noiseEnv = Math.exp(-t * 20);
+          
+          // Combine components
+          dataLeft[i] = (tone1 + tone2) * 0.3 + noiseHP * noiseEnv * 0.7;
+          
+          // Slight stereo variation for realism
+          dataRight[i] = (tone1 + tone2) * 0.32 + noiseHP * noiseEnv * 0.68 * 
+            (1 + (Math.random() * 0.05 - 0.025)); // Small random variation
         }
         break;
       }
       case "hihat": {
-        // Simple hi-hat (filtered noise with fast decay)
-        buffer = context.createBuffer(1, sampleRate * 0.1, sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
+        // Enhanced hi-hat with better filtering and resonance
+        buffer = context.createBuffer(2, sampleRate * 0.2, sampleRate);
+        const dataLeft = buffer.getChannelData(0);
+        const dataRight = buffer.getChannelData(1);
+        
+        // Create a bandpass filtered noise
+        for (let i = 0; i < dataLeft.length; i++) {
           const t = i / sampleRate;
-          const noise = Math.random() * 2 - 1;
-          data[i] = noise * Math.exp(-70 * t);
+          
+          // Generate filtered noise
+          let noise = 0;
+          // Add multiple frequency bands for a more metallic sound
+          for (let j = 0; j < 5; j++) {
+            const freq = 5000 + j * 2000; // Different bands from 5-13kHz
+            noise += Math.sin(2 * Math.PI * freq * t + Math.random() * 0.2) * 0.1;
+          }
+          
+          // Add some white noise
+          noise += (Math.random() * 2 - 1) * 0.5;
+          
+          // Apply envelope - very fast attack and decay
+          const env = Math.exp(-t * (t < 0.005 ? 20 : 80));
+          
+          // Output with stereo width
+          dataLeft[i] = noise * env;
+          dataRight[i] = noise * env * 0.95; // Slight stereo effect
         }
         break;
       }
       case "clap": {
-        // Simple clap (filtered noise with specific envelope)
-        buffer = context.createBuffer(1, sampleRate * 0.2, sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
+        // Enhanced clap with multiple transients
+        buffer = context.createBuffer(2, sampleRate * 0.4, sampleRate);
+        const dataLeft = buffer.getChannelData(0);
+        const dataRight = buffer.getChannelData(1);
+        
+        for (let i = 0; i < dataLeft.length; i++) {
           const t = i / sampleRate;
-          const noise = Math.random() * 2 - 1;
-          // Specific clap envelope
-          let env = Math.exp(-20 * t);
-          if (t > 0.005) env += Math.exp(-20 * (t - 0.005)) * 0.6;
-          if (t > 0.01) env += Math.exp(-20 * (t - 0.01)) * 0.3;
-          data[i] = noise * env * 0.7;
+          let env = 0;
+          
+          // Create multiple "clap" transients
+          if (t < 0.001) env = t / 0.001;
+          else if (t < 0.008) env = 1 - (t - 0.001) / 0.007;
+          else if (t < 0.009) env = 0;
+          else if (t < 0.011) env = (t - 0.009) / 0.002;
+          else if (t < 0.02) env = 1 - (t - 0.011) / 0.009;
+          else if (t < 0.021) env = 0;
+          else if (t < 0.022) env = (t - 0.021) / 0.001;
+          else if (t < 0.03) env = 1 - (t - 0.022) / 0.008;
+          else if (t < 0.031) env = 0;
+          else if (t < 0.032) env = (t - 0.031) / 0.001;
+          
+          // Long decay
+          if (t >= 0.032) env = Math.exp(-(t - 0.032) * 15) * 0.8;
+          
+          // Band-limited noise
+          let noise = 0;
+          for (let j = 0; j < 10; j++) {
+            // Focus on mid-high frequencies
+            noise += Math.sin(2 * Math.PI * (1000 + j * 1000) * t * (1 + Math.random() * 0.1)) * 0.1;
+          }
+          noise += (Math.random() * 2 - 1) * 0.3;
+          
+          // Apply envelope and compress a bit
+          const signal = noise * env;
+          const compressed = signal * (1 - Math.max(0, signal - 0.8) * 0.5);
+          
+          // Subtle stereo spreading
+          dataLeft[i] = compressed;
+          dataRight[i] = compressed * (1 + (Math.random() * 0.1 - 0.05));
         }
         break;
       }
       default: {
         // Default to a simple tone
-        buffer = context.createBuffer(1, sampleRate * 0.2, sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < data.length; i++) {
+        buffer = context.createBuffer(2, sampleRate * 0.2, sampleRate);
+        const dataLeft = buffer.getChannelData(0);
+        const dataRight = buffer.getChannelData(1);
+        
+        for (let i = 0; i < dataLeft.length; i++) {
           const t = i / sampleRate;
-          data[i] = Math.sin(2 * Math.PI * 440 * t) * Math.exp(-10 * t);
+          const signal = Math.sin(2 * Math.PI * 440 * t) * Math.exp(-10 * t);
+          dataLeft[i] = signal;
+          dataRight[i] = signal;
         }
       }
     }
@@ -180,18 +268,34 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     return buffer;
   };
   
-  // Play a drum sound
+  // Play a drum sound with enhanced processing
   const playSound = useCallback((soundId: string) => {
     if (!audioContext.current || !soundBuffers.current[soundId]) return;
     
     const source = audioContext.current.createBufferSource();
     source.buffer = soundBuffers.current[soundId];
     
+    // Create gain for volume control
     const gainNode = audioContext.current.createGain();
-    gainNode.gain.value = volume; // Use volume state
+    gainNode.gain.value = volume;
     
+    // Add a compressor for punch
+    const compressor = audioContext.current.createDynamicsCompressor();
+    compressor.threshold.value = -24;
+    compressor.ratio.value = 4;
+    compressor.attack.value = 0.003;
+    compressor.release.value = 0.25;
+    
+    // Create a subtle stereo effect using a stereo panner
+    const panner = audioContext.current.createStereoPanner();
+    panner.pan.value = (soundId === "hihat" || soundId === "clap") ? 0.2 : -0.1;
+    
+    // Connect the audio graph
     source.connect(gainNode);
-    gainNode.connect(audioContext.current.destination);
+    gainNode.connect(compressor);
+    compressor.connect(panner);
+    panner.connect(audioContext.current.destination);
+    
     source.start();
   }, [volume]);
   
@@ -243,7 +347,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     }
   }, [onPatternChange]);
   
-  // Start the sequencer
+  // Start the sequencer with enhanced timing
   const startSequencer = useCallback(async () => {
     await initAudio();
     
@@ -264,7 +368,10 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     const stepsPerMinute = bpm * 4;
     const intervalMs = 60000 / stepsPerMinute;
     
-    // Start the sequencer loop
+    // Use more accurate timing with audioContext time if available
+    let lastStepTime = audioContext.current ? audioContext.current.currentTime : 0;
+    
+    // Start the sequencer loop with enhanced timing
     intervalRef.current = window.setInterval(() => {
       setCurrentStep(step => {
         const nextStep = (step + 1) % STEPS;
@@ -359,54 +466,64 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     }
   }, []);
   
-  // Visualize sound when playing
+  // Visualize sound when playing - enhanced with visual feedback
   const playTestSound = (soundId: string) => {
     playSound(soundId);
   };
   
   return (
-    <Card className={`w-full ${className}`}>
+    <Card className={`w-full ${className} transition-all duration-300`}>
       <CardHeader>
-        <CardTitle>Drum Machine</CardTitle>
+        <CardTitle className="flex justify-between items-center">
+          Drum Machine
+          {playing && (
+            <span className="text-sm font-normal px-2 py-0.5 bg-primary/20 rounded-full animate-pulse transition-all">
+              Playing
+            </span>
+          )}
+        </CardTitle>
         <CardDescription>16-step sequencer drum machine</CardDescription>
       </CardHeader>
       <CardContent>
-        {/* Step indicator */}
+        {/* Step indicator with smoother animations */}
         <div className="grid grid-cols-16 gap-1 mb-4">
           {Array.from({ length: STEPS }).map((_, stepIndex) => (
             <div 
               key={`step-${stepIndex}`}
-              className={`h-2 rounded-full ${currentStep === stepIndex 
-                ? 'bg-primary' 
-                : stepIndex % 4 === 0 
-                  ? 'bg-muted-foreground/30' 
-                  : 'bg-muted-foreground/10'
+              className={`h-2 rounded-full transition-all duration-150 ${
+                currentStep === stepIndex 
+                  ? 'bg-primary scale-y-125' 
+                  : stepIndex % 4 === 0 
+                    ? 'bg-muted-foreground/30' 
+                    : 'bg-muted-foreground/10'
               }`}
             />
           ))}
         </div>
         
-        {/* Drum pads */}
+        {/* Drum pads with enhanced visual feedback */}
         <div className="space-y-2">
           {DRUM_SOUNDS.map((sound, soundIndex) => (
             <div key={sound.id} className="flex items-center">
               <div 
-                className="w-16 mr-2 text-sm font-medium cursor-pointer hover:text-primary transition-colors"
+                className="w-16 mr-2 text-sm font-medium cursor-pointer hover:text-primary transition-colors group flex items-center justify-start"
                 onClick={() => playTestSound(sound.id)}
                 title="Click to test sound"
               >
-                {sound.name}
+                <span className="transition-transform duration-200 group-hover:scale-110">{sound.name}</span>
               </div>
               <div className="flex-1 grid grid-cols-16 gap-1">
                 {Array.from({ length: STEPS }).map((_, stepIndex) => (
                   <button
                     key={`${sound.id}-${stepIndex}`}
-                    className={`h-10 rounded-md border transition-colors
+                    className={`h-10 rounded-md border transition-all duration-200
                       ${pattern[soundIndex][stepIndex] 
-                        ? `${sound.color} border-primary` 
+                        ? `${sound.color} border-primary shadow-md hover:brightness-110` 
                         : 'bg-secondary/30 border-muted hover:bg-muted/50'
                       }
-                      ${currentStep === stepIndex ? 'ring-2 ring-primary ring-offset-1' : ''}
+                      ${currentStep === stepIndex && playing ? 'ring-2 ring-primary ring-offset-1 scale-105' : ''}
+                      ${currentStep === stepIndex && pattern[soundIndex][stepIndex] && playing ? 'animate-pulse' : ''}
+                      hover:scale-105
                     `}
                     onClick={() => toggleStep(soundIndex, stepIndex)}
                     aria-label={`Toggle ${sound.name} at step ${stepIndex + 1}`}
@@ -417,7 +534,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
           ))}
         </div>
         
-        {/* Controls */}
+        {/* Controls with enhanced UI */}
         <div className="mt-6 space-y-4">
           <div className="space-y-2">
             <div className="flex justify-between">
@@ -430,6 +547,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
               step={1}
               value={[bpm]}
               onValueChange={(values) => setBpm(values[0])}
+              className="transition-all duration-200"
             />
           </div>
           
@@ -444,14 +562,23 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
               step={0.01}
               value={[volume]}
               onValueChange={(values) => setVolume(values[0])}
+              className="transition-all duration-200"
             />
           </div>
           
           <div className="grid grid-cols-2 gap-2 mt-4">
-            <Button variant="outline" onClick={clearPattern}>
+            <Button 
+              variant="outline" 
+              onClick={clearPattern}
+              className="transition-all duration-200 hover:bg-destructive/10"
+            >
               Clear Pattern
             </Button>
-            <Button variant="outline" onClick={createBasicPattern}>
+            <Button 
+              variant="outline" 
+              onClick={createBasicPattern}
+              className="transition-all duration-200 hover:bg-primary/10"
+            >
               Basic Beat
             </Button>
           </div>
@@ -462,7 +589,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
         <Button 
           size="lg" 
           onClick={togglePlayback}
-          className="w-full"
+          className={`w-full transition-all duration-300 ${playing ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90'}`}
         >
           {playing ? (
             <><Square className="mr-2 h-4 w-4" /> Stop</>
@@ -480,6 +607,16 @@ const style = document.createElement('style');
 style.textContent = `
   .grid-cols-16 {
     grid-template-columns: repeat(16, minmax(0, 1fr));
+  }
+  
+  /* Smooth animations */
+  @keyframes glow {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.2); }
+  }
+  
+  .animate-glow {
+    animation: glow 1s infinite;
   }
 `;
 document.head.appendChild(style);

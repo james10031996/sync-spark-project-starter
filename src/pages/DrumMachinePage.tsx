@@ -10,6 +10,7 @@ import { Slider } from "@/components/ui/slider";
 import { toast } from "@/components/ui/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { motion } from "framer-motion";
 
 const DrumMachinePage: React.FC = () => {
   const [bpm, setBpm] = useState(120);
@@ -54,6 +55,16 @@ const DrumMachinePage: React.FC = () => {
   const handlePatternChange = (pattern: string) => {
     setPatternQuery(pattern);
   };
+
+  // Animation variants for page elements
+  const fadeIn = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: { duration: 0.5 }
+    }
+  };
   
   return (
     <div className="min-h-screen py-8 px-4 bg-background">
@@ -61,39 +72,68 @@ const DrumMachinePage: React.FC = () => {
         <ThemeToggle />
       </div>
       
-      <div className="container max-w-5xl mx-auto">
-        <header className="mb-8 flex justify-between items-center">
+      <motion.div 
+        className="container max-w-5xl mx-auto"
+        initial="hidden"
+        animate="visible"
+        variants={{
+          hidden: { opacity: 0 },
+          visible: { 
+            opacity: 1,
+            transition: {
+              staggerChildren: 0.1
+            }
+          }
+        }}
+      >
+        <motion.header 
+          className="mb-8 flex justify-between items-center"
+          variants={fadeIn}
+        >
           <h1 className="text-3xl font-bold">Drum Machine</h1>
           <div className="flex space-x-2">
             <Button 
               variant="outline" 
               onClick={() => setShowTutorial(!showTutorial)}
+              className="transition-all duration-300 hover:bg-primary/10"
             >
               {showTutorial ? "Hide" : "Show"} Tutorial
             </Button>
             <Link to="/">
-              <Button variant="outline">Back to Home</Button>
+              <Button variant="outline" className="transition-all duration-300 hover:bg-primary/10">
+                Back to Home
+              </Button>
             </Link>
           </div>
-        </header>
+        </motion.header>
         
         {showTutorial && (
-          <Card className="mb-6 animate-fade-in">
-            <CardContent className="pt-6">
-              <h2 className="text-xl font-semibold mb-2">Quick Tutorial</h2>
-              <ol className="list-decimal pl-5 space-y-2">
-                <li>Click on the grid cells to toggle drum sounds at specific steps</li>
-                <li>Use the "Start" button to play your pattern</li>
-                <li>Adjust the tempo with the BPM slider</li>
-                <li>Try the "Basic Beat" button for a simple pattern to start</li>
-                <li>Share your creation by copying the URL</li>
-              </ol>
-            </CardContent>
-          </Card>
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.3 }}
+          >
+            <Card className="mb-6">
+              <CardContent className="pt-6">
+                <h2 className="text-xl font-semibold mb-2">Quick Tutorial</h2>
+                <ol className="list-decimal pl-5 space-y-2">
+                  <li>Click on the grid cells to toggle drum sounds at specific steps</li>
+                  <li>Use the "Start" button to play your pattern</li>
+                  <li>Adjust the tempo with the BPM slider</li>
+                  <li>Try the "Basic Beat" button for a simple pattern to start</li>
+                  <li>Share your creation by copying the URL</li>
+                </ol>
+              </CardContent>
+            </Card>
+          </motion.div>
         )}
         
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
+          <motion.div 
+            className="lg:col-span-2"
+            variants={fadeIn}
+          >
             <DrumMachine 
               initialBpm={bpm} 
               queryPattern={loadedPattern}
@@ -101,30 +141,41 @@ const DrumMachinePage: React.FC = () => {
               onPatternChange={handlePatternChange}
             />
             
-            <Card className="mt-6">
-              <CardContent className="pt-6">
-                <h3 className="font-medium mb-3">Share Your Pattern</h3>
-                <div className="flex space-x-2">
-                  <Input 
-                    placeholder="Enter pattern query string" 
-                    value={patternQuery}
-                    onChange={(e) => setPatternQuery(e.target.value)}
-                  />
-                  <Button onClick={copyShareURL}>Share</Button>
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Pattern automatically updates as you create your beat. Click Share to copy URL.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
+            <motion.div variants={fadeIn}>
+              <Card className="mt-6">
+                <CardContent className="pt-6">
+                  <h3 className="font-medium mb-3">Share Your Pattern</h3>
+                  <div className="flex space-x-2">
+                    <Input 
+                      placeholder="Enter pattern query string" 
+                      value={patternQuery}
+                      onChange={(e) => setPatternQuery(e.target.value)}
+                      className="transition-all duration-300 focus:ring-2"
+                    />
+                    <Button 
+                      onClick={copyShareURL}
+                      className="transition-all duration-300 hover:scale-105"
+                    >
+                      Share
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Pattern automatically updates as you create your beat. Click Share to copy URL.
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
           
-          <div className="space-y-6">
-            <Tabs defaultValue="about">
+          <motion.div 
+            className="space-y-6"
+            variants={fadeIn}
+          >
+            <Tabs defaultValue="about" className="w-full">
               <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="about">About</TabsTrigger>
-                <TabsTrigger value="patterns">Patterns</TabsTrigger>
-                <TabsTrigger value="embed">Embed</TabsTrigger>
+                <TabsTrigger value="about" className="transition-all duration-200">About</TabsTrigger>
+                <TabsTrigger value="patterns" className="transition-all duration-200">Patterns</TabsTrigger>
+                <TabsTrigger value="embed" className="transition-all duration-200">Embed</TabsTrigger>
               </TabsList>
               
               <TabsContent value="about" className="mt-4">
@@ -157,31 +208,66 @@ const DrumMachinePage: React.FC = () => {
                     <div className="grid grid-cols-1 gap-2">
                       <Button 
                         variant="outline" 
-                        className="justify-start"
+                        className="justify-start transition-colors duration-200 hover:bg-primary/10"
                         onClick={() => setLoadedPattern("kick=1000100010001000&snare=0000100000001000&hihat=1010101010101010&clap=0000000000000000")}
                       >
                         Basic Rock Beat
                       </Button>
                       <Button 
                         variant="outline" 
-                        className="justify-start"
+                        className="justify-start transition-colors duration-200 hover:bg-primary/10"
                         onClick={() => setLoadedPattern("kick=1001000010010000&snare=0000100000001000&hihat=1111111111111111&clap=0000000010000000")}
                       >
                         Hip Hop Groove
                       </Button>
                       <Button 
                         variant="outline" 
-                        className="justify-start"
+                        className="justify-start transition-colors duration-200 hover:bg-primary/10"
                         onClick={() => setLoadedPattern("kick=1000000010000000&snare=0000100000001000&hihat=1010101010101010&clap=0000000000001000")}
                       >
                         Minimal Beat
                       </Button>
                       <Button 
                         variant="outline" 
-                        className="justify-start"
+                        className="justify-start transition-colors duration-200 hover:bg-primary/10"
                         onClick={() => setLoadedPattern("kick=1000001010100100&snare=0010100001000010&hihat=1010101010101010&clap=0000000000000000")}
                       >
                         Breakbeat
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="justify-start transition-colors duration-200 hover:bg-primary/10"
+                        onClick={() => setLoadedPattern("kick=1000100000001000&snare=0000100010001000&hihat=1111111111111111&clap=0001000000000000")}
+                      >
+                        Dance Beat
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="justify-start transition-colors duration-200 hover:bg-primary/10"
+                        onClick={() => setLoadedPattern("kick=1000100010001000&snare=0010001000100010&hihat=1010101010101010&clap=0000100000001000")}
+                      >
+                        Reggae Rhythm
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="justify-start transition-colors duration-200 hover:bg-primary/10"
+                        onClick={() => setLoadedPattern("kick=1000001010000010&snare=0001100000011000&hihat=0101010101010101&clap=0000000000010000")}
+                      >
+                        Trap Pattern
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="justify-start transition-colors duration-200 hover:bg-primary/10"
+                        onClick={() => setLoadedPattern("kick=1000010000100100&snare=0001000100010001&hihat=0110110001101100&clap=0000100000001000")}
+                      >
+                        Latin Groove
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="justify-start transition-colors duration-200 hover:bg-primary/10"
+                        onClick={() => setLoadedPattern("kick=1010000010100000&snare=0000101000001010&hihat=1111111111111111&clap=0101010101010101")}
+                      >
+                        EDM Buildup
                       </Button>
                     </div>
                   </CardContent>
@@ -220,6 +306,7 @@ const DrumMachinePage: React.FC = () => {
                           placeholder="e.g. kick=1010&snare=0101" 
                           value={patternQuery}
                           onChange={(e) => setPatternQuery(e.target.value)}
+                          className="transition-all duration-300"
                         />
                       </div>
                       
@@ -230,6 +317,7 @@ const DrumMachinePage: React.FC = () => {
                           readOnly 
                           value={`<DrumMachine initialBpm={${bpm}}${patternQuery ? ` queryPattern="${patternQuery}"` : ''} onPatternChange={(pattern) => console.log('Pattern updated:', pattern)} />`} 
                           onClick={(e) => (e.target as HTMLInputElement).select()}
+                          className="font-mono text-sm transition-all duration-300"
                         />
                         <p className="text-xs text-muted-foreground">Click to select, then copy.</p>
                       </div>
@@ -239,20 +327,22 @@ const DrumMachinePage: React.FC = () => {
               </TabsContent>
             </Tabs>
             
-            <Card>
-              <CardContent className="pt-6">
-                <h2 className="text-xl font-semibold mb-4">Keyboard Controls</h2>
-                <ul className="list-disc pl-5 space-y-2">
-                  <li><strong>Space:</strong> Start/Stop playback</li>
-                  <li><strong>C:</strong> Clear pattern</li>
-                  <li><strong>B:</strong> Create basic beat</li>
-                  <li><strong>Arrow Up/Down:</strong> Adjust tempo</li>
-                </ul>
-              </CardContent>
-            </Card>
-          </div>
+            <motion.div variants={fadeIn}>
+              <Card>
+                <CardContent className="pt-6">
+                  <h2 className="text-xl font-semibold mb-4">Keyboard Controls</h2>
+                  <ul className="list-disc pl-5 space-y-2">
+                    <li><strong>Space:</strong> Start/Stop playback</li>
+                    <li><strong>C:</strong> Clear pattern</li>
+                    <li><strong>B:</strong> Create basic beat</li>
+                    <li><strong>Arrow Up/Down:</strong> Adjust tempo</li>
+                  </ul>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </div>
   );
 };

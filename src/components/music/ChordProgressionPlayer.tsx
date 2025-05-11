@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +10,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ChordSection } from "@/components/music/ChordSection";
 import { toast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Dropdown, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 // Define chord types for the progression player
 const chordTypes = [
@@ -121,7 +120,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     return audioContext.current;
   };
 
-  // Handle chord playback
+  // Enhanced playChord function with improved sound quality
   const playChord = (chord: ChordInProgression) => {
     try {
       const context = initAudioContext();
@@ -160,43 +159,47 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
           break;
       }
       
-      // Create and play oscillators for each note in the chord
+      // Enhanced tone creation for better sound quality
       intervals.forEach((interval, i) => {
         const noteIndex = (rootIndex + interval) % 12;
         const octaveOffset = Math.floor((rootIndex + interval) / 12);
         const note = rootNotes[noteIndex];
         
         // Calculate frequency using scientific pitch notation
-        // A4 = 440Hz
         const a4Index = rootNotes.indexOf("A") + (4 * 12);
         const noteFullIndex = rootNotes.indexOf(note) + ((4 + octaveOffset) * 12);
         const frequency = 440 * Math.pow(2, (noteFullIndex - a4Index) / 12);
         
-        // Create different tones for different instruments
+        // Create different tones for different instruments with improved quality
         if (instruments.piano) {
+          // Piano with better harmonics
           createTone(context, frequency, "sine", 0.15, i * 0.02);
+          createTone(context, frequency * 2, "sine", 0.05, i * 0.02); // Octave higher for richness
         }
         
         if (instruments.guitar) {
+          // Guitar with string simulation
           createTone(context, frequency, "triangle", 0.1, i * 0.03, 0.1);
+          createTone(context, frequency, "sawtooth", 0.05, i * 0.03 + 0.01, -3); // Add texture
         }
         
         if (instruments.bass && i === 0) {
-          // Bass plays just the root note, one octave lower
-          createTone(context, frequency / 2, "sine", 0.2, 0, 0.1);
+          // Bass with deeper sound
+          createTone(context, frequency / 2, "sine", 0.2, 0, 0);
+          createTone(context, frequency / 4, "sine", 0.1, 0.05, 0); // Sub-bass
         }
       });
       
-      // Add drums if enabled
+      // Enhanced drums if enabled
       if (instruments.drums) {
-        playDrumSound(context);
+        playEnhancedDrumSound(context);
       }
     } catch (error) {
       console.error("Error playing chord:", error);
     }
   };
   
-  // Create a tone for an instrument
+  // Enhanced tone creation function with better envelope
   const createTone = (
     context: AudioContext, 
     frequency: number, 
@@ -208,57 +211,136 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     const osc = context.createOscillator();
     const gain = context.createGain();
     
+    // Optional filter for more natural sound
+    const filter = context.createBiquadFilter();
+    filter.type = "lowpass";
+    filter.frequency.value = 5000;
+    
     osc.type = type;
     osc.frequency.value = frequency;
     if (detune) osc.detune.value = detune;
     
+    // Smoother ADSR envelope
     gain.gain.setValueAtTime(0, context.currentTime + delay);
-    gain.gain.linearRampToValueAtTime(volume, context.currentTime + delay + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + delay + 1.5);
+    gain.gain.linearRampToValueAtTime(volume, context.currentTime + delay + 0.03);
+    gain.gain.setValueAtTime(volume * 0.8, context.currentTime + delay + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + delay + 1.8);
     
-    osc.connect(gain);
+    osc.connect(filter);
+    filter.connect(gain);
     gain.connect(context.destination);
     
     osc.start(context.currentTime + delay);
-    osc.stop(context.currentTime + delay + 1.5);
+    osc.stop(context.currentTime + delay + 2.0);
+    
+    // Add gentle vibrato for realism
+    if (type === "triangle" || type === "sine") {
+      const lfo = context.createOscillator();
+      const lfoGain = context.createGain();
+      
+      lfo.type = "sine";
+      lfo.frequency.value = 5 + Math.random() * 2; // Random slight variation
+      
+      lfoGain.gain.value = 3; // Vibrato depth
+      
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.detune);
+      
+      lfo.start(context.currentTime + delay + 0.1);
+      lfo.stop(context.currentTime + delay + 2.0);
+    }
   };
   
-  // Play a basic drum sound
-  const playDrumSound = (context: AudioContext) => {
-    // Kick drum
+  // Enhanced drum sounds
+  const playEnhancedDrumSound = (context: AudioContext) => {
+    // Improved kick drum
     const kickOsc = context.createOscillator();
     const kickGain = context.createGain();
     
     kickOsc.frequency.value = 150;
-    kickOsc.frequency.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+    kickOsc.frequency.exponentialRampToValueAtTime(0.01, context.currentTime + 0.4);
     
-    kickGain.gain.setValueAtTime(0.5, context.currentTime);
-    kickGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.3);
+    kickGain.gain.setValueAtTime(0.8, context.currentTime);
+    kickGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.4);
     
     kickOsc.connect(kickGain);
     kickGain.connect(context.destination);
     
     kickOsc.start(context.currentTime);
-    kickOsc.stop(context.currentTime + 0.3);
+    kickOsc.stop(context.currentTime + 0.4);
     
-    // Hi-hat
-    const hatOsc = context.createOscillator();
+    // Better hi-hat with noise and filtering
+    const bufferSize = context.sampleRate * 0.1;
+    const noiseBuffer = context.createBuffer(1, bufferSize, context.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    
+    const hatNode = context.createBufferSource();
+    hatNode.buffer = noiseBuffer;
+    
     const hatGain = context.createGain();
     const hatFilter = context.createBiquadFilter();
     
-    hatOsc.type = "noise" as unknown as OscillatorType;
     hatFilter.type = "highpass";
-    hatFilter.frequency.value = 7000;
+    hatFilter.frequency.value = 8000;
+    hatFilter.Q.value = 1;
     
-    hatGain.gain.setValueAtTime(0.05, context.currentTime);
-    hatGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.1);
+    hatGain.gain.setValueAtTime(0.06, context.currentTime);
+    hatGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.08);
     
-    hatOsc.connect(hatFilter);
+    hatNode.connect(hatFilter);
     hatFilter.connect(hatGain);
     hatGain.connect(context.destination);
     
-    hatOsc.start(context.currentTime);
-    hatOsc.stop(context.currentTime + 0.1);
+    hatNode.start(context.currentTime);
+    
+    // Add snare hit on beats 2 and 4 for better rhythm
+    if (Math.random() > 0.5) {
+      setTimeout(() => {
+        const snareOsc = context.createOscillator();
+        const snareGain = context.createGain();
+        const snareFilter = context.createBiquadFilter();
+        
+        // Snare body
+        snareOsc.frequency.value = 180;
+        snareOsc.type = "triangle";
+        
+        snareFilter.type = "bandpass";
+        snareFilter.frequency.value = 2000;
+        
+        snareGain.gain.setValueAtTime(0.1, context.currentTime);
+        snareGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
+        
+        snareOsc.connect(snareFilter);
+        snareFilter.connect(snareGain);
+        snareGain.connect(context.destination);
+        
+        snareOsc.start(context.currentTime);
+        snareOsc.stop(context.currentTime + 0.2);
+        
+        // Snare noise
+        const snareNoise = context.createBufferSource();
+        snareNoise.buffer = noiseBuffer;
+        
+        const snareNoiseGain = context.createGain();
+        const snareNoiseFilter = context.createBiquadFilter();
+        
+        snareNoiseFilter.type = "highpass";
+        snareNoiseFilter.frequency.value = 1000;
+        
+        snareNoiseGain.gain.setValueAtTime(0.15, context.currentTime);
+        snareNoiseGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + 0.2);
+        
+        snareNoise.connect(snareNoiseFilter);
+        snareNoiseFilter.connect(snareNoiseGain);
+        snareNoiseGain.connect(context.destination);
+        
+        snareNoise.start(context.currentTime);
+      }, 120); // Delay by around 120ms
+    }
   };
 
   // Start/stop playback
@@ -469,15 +551,15 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
   }, [bpm]);
 
   return (
-    <div className={`w-full max-w-4xl mx-auto ${className}`}>
-      {/* Main controls */}
+    <div className={`w-full max-w-4xl mx-auto ${className} animate-fade-in`}>
+      {/* Main controls with smooth animation */}
       <div className="flex flex-wrap gap-2 mb-6">
         <Button 
           variant={playing ? "destructive" : "default"}
           onClick={togglePlayback}
-          className="w-16"
+          className="w-24 transition-all duration-300 hover:scale-105"
         >
-          <Play className="mr-1 h-4 w-4" />
+          <Play className={`mr-1 h-4 w-4 ${playing ? 'animate-pulse' : ''}`} />
           {playing ? "Stop" : "Play"}
         </Button>
 
@@ -517,7 +599,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         </Button>
 
         <label className="cursor-pointer">
-          <Button variant="outline" asChild>
+          <Button variant="outline" asChild className="transition-colors duration-300">
             <span>File</span>
           </Button>
           <input 
