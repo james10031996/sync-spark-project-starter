@@ -16,7 +16,7 @@ const Index = () => {
           Interactive music tools for playing and creating music
         </p>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-md mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-xl mx-auto">
           <Link to="/chord-player">
             <Button variant="default" className="w-full text-lg py-6">
               Chord Player
@@ -28,7 +28,17 @@ const Index = () => {
               Drum Machine
             </Button>
           </Link>
+          
+          <Link to="/metronome">
+            <Button variant="default" className="w-full text-lg py-6">
+              Metronome
+            </Button>
+          </Link>
         </div>
+        
+        <p className="mt-12 text-sm text-muted-foreground">
+          All tools work with keyboard shortcuts and are fully responsive
+        </p>
       </div>
     </div>
   );

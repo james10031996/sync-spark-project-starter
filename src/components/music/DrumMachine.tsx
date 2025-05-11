@@ -1,10 +1,10 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Play, Stop } from "lucide-react";
+import { Play, Square, Square2 } from "lucide-react";
+import { useDrumKeyboardControls } from "@/hooks/useDrumKeyboardControls";
 
 // Define drum sounds
 const DRUM_SOUNDS = [
@@ -67,12 +67,14 @@ interface DrumMachineProps {
   className?: string;
   initialBpm?: number;
   queryPattern?: string;
+  onPatternChange?: (pattern: string) => void;
 }
 
 const DrumMachine: React.FC<DrumMachineProps> = ({
   className = "",
   initialBpm = 120,
   queryPattern = "",
+  onPatternChange,
 }) => {
   // Get pattern from query if provided, otherwise use empty pattern
   const initialPattern = queryPattern 
@@ -83,6 +85,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
   const [playing, setPlaying] = useState(false);
   const [currentStep, setCurrentStep] = useState(-1);
   const [bpm, setBpm] = useState(initialBpm);
+  const [volume, setVolume] = useState(0.6);
   
   const audioContext = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
@@ -185,23 +188,63 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     source.buffer = soundBuffers.current[soundId];
     
     const gainNode = audioContext.current.createGain();
-    gainNode.gain.value = 0.6; // Prevent clipping when multiple sounds play
+    gainNode.gain.value = volume; // Use volume state
     
     source.connect(gainNode);
     gainNode.connect(audioContext.current.destination);
     source.start();
-  }, []);
+  }, [volume]);
   
   // Toggle a step in the pattern
-  const toggleStep = (soundIndex: number, stepIndex: number) => {
-    const newPattern = [...pattern];
-    newPattern[soundIndex] = [...newPattern[soundIndex]];
-    newPattern[soundIndex][stepIndex] = !newPattern[soundIndex][stepIndex];
+  const toggleStep = useCallback((soundIndex: number, stepIndex: number) => {
+    setPattern(prevPattern => {
+      const newPattern = [...prevPattern];
+      newPattern[soundIndex] = [...newPattern[soundIndex]];
+      newPattern[soundIndex][stepIndex] = !newPattern[soundIndex][stepIndex];
+      
+      // Notify parent component of pattern changes if callback provided
+      if (onPatternChange) {
+        onPatternChange(generatePatternQuery(newPattern));
+      }
+      
+      return newPattern;
+    });
+  }, [onPatternChange]);
+  
+  // Clear the pattern
+  const clearPattern = useCallback(() => {
+    const newPattern = createEmptyPattern();
     setPattern(newPattern);
-  };
+    if (onPatternChange) {
+      onPatternChange(generatePatternQuery(newPattern));
+    }
+  }, [onPatternChange]);
+  
+  // Create a simple pattern
+  const createBasicPattern = useCallback(() => {
+    const newPattern = createEmptyPattern();
+    
+    // Kick on beats 1 and 9 (first beat of each bar)
+    newPattern[0][0] = true;
+    newPattern[0][8] = true;
+    
+    // Snare on beats 5 and 13 (2nd and 4th beats)
+    newPattern[1][4] = true;
+    newPattern[1][12] = true;
+    
+    // Hi-hat on every other step
+    for (let i = 0; i < STEPS; i += 2) {
+      newPattern[2][i] = true;
+    }
+    
+    setPattern(newPattern);
+    if (onPatternChange) {
+      onPatternChange(generatePatternQuery(newPattern));
+    }
+  }, [onPatternChange]);
   
   // Start the sequencer
-  const startSequencer = async () => {
+  const startSequencer = useCallback(async () => {
     await initAudio();
     
     if (audioContext.current?.state === 'suspended') {
@@ -236,17 +279,31 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
         return nextStep;
       });
     }, intervalMs);
-  };
+  }, [bpm, initAudio, pattern, playSound]);
   
   // Stop the sequencer
-  const stopSequencer = () => {
+  const stopSequencer = useCallback(() => {
     if (intervalRef.current) {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
     setPlaying(false);
     setCurrentStep(-1);
-  };
+  }, []);
+  
+  // Toggle between play and stop
+  const togglePlayback = useCallback(() => {
+    if (playing) {
+      stopSequencer();
+    } else {
+      startSequencer();
+    }
+  }, [playing, startSequencer, stopSequencer]);
+  
+  // Adjust BPM by a certain amount
+  const adjustBpm = useCallback((amount: number) => {
+    setBpm(prev => Math.min(Math.max(prev + amount, 60), 200));
+  }, []);
   
   // Update interval when BPM changes
   useEffect(() => {
@@ -254,7 +311,30 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
       stopSequencer();
       startSequencer();
     }
-  }, [bpm]);
+  }, [bpm, playing, startSequencer, stopSequencer]);
+  
+  // Setup keyboard controls
+  useDrumKeyboardControls({
+    playing,
+    startStop: togglePlayback,
+    clearPattern,
+    createBasicPattern,
+    adjustBpm
+  });
+  
+  // Update pattern when queryPattern prop changes
+  useEffect(() => {
+    if (queryPattern) {
+      setPattern(parsePatternFromQuery(queryPattern));
+    }
+  }, [queryPattern]);
+  
+  // Generate pattern string when pattern changes
+  useEffect(() => {
+    if (onPatternChange) {
+      onPatternChange(generatePatternQuery(pattern));
+    }
+  }, [pattern, onPatternChange]);
   
   // Clean up on unmount
   useEffect(() => {
@@ -278,6 +358,11 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
       }
     }
   }, []);
+  
+  // Visualize sound when playing
+  const playTestSound = (soundId: string) => {
+    playSound(soundId);
+  };
   
   return (
     <Card className={`w-full ${className}`}>
@@ -305,7 +390,13 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
         <div className="space-y-2">
           {DRUM_SOUNDS.map((sound, soundIndex) => (
             <div key={sound.id} className="flex items-center">
-              <div className="w-16 mr-2 text-sm font-medium">{sound.name}</div>
+              <div 
+                className="w-16 mr-2 text-sm font-medium cursor-pointer hover:text-primary transition-colors"
+                onClick={() => playTestSound(sound.id)}
+                title="Click to test sound"
+              >
+                {sound.name}
+              </div>
               <div className="flex-1 grid grid-cols-16 gap-1">
                 {Array.from({ length: STEPS }).map((_, stepIndex) => (
                   <button
@@ -341,17 +432,40 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
               onValueChange={(values) => setBpm(values[0])}
             />
           </div>
+          
+          <div className="space-y-2">
+            <div className="flex justify-between">
+              <Label htmlFor="volume">Volume: {Math.round(volume * 100)}%</Label>
+            </div>
+            <Slider
+              id="volume"
+              min={0}
+              max={1}
+              step={0.01}
+              value={[volume]}
+              onValueChange={(values) => setVolume(values[0])}
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-2 mt-4">
+            <Button variant="outline" onClick={clearPattern}>
+              Clear Pattern
+            </Button>
+            <Button variant="outline" onClick={createBasicPattern}>
+              Basic Beat
+            </Button>
+          </div>
         </div>
       </CardContent>
       
       <CardFooter className="flex justify-between">
         <Button 
           size="lg" 
-          onClick={playing ? stopSequencer : startSequencer}
+          onClick={togglePlayback}
           className="w-full"
         >
           {playing ? (
-            <><Stop className="mr-2 h-4 w-4" /> Stop</>
+            <><Square2 className="mr-2 h-4 w-4" /> Stop</>
           ) : (
             <><Play className="mr-2 h-4 w-4" /> Start</>
           )}
