@@ -29,11 +29,11 @@ const ChordProgressionPage: React.FC = () => {
             Try different styles, add sections, and experiment with your own chord combinations.
           </p>
           <div className="flex justify-center gap-4 mt-4">
-            <Link to="/chord-player">
-              <Button variant="outline">Single Chord Player</Button>
-            </Link>
             <Link to="/drum-machine">
               <Button variant="outline">Drum Machine</Button>
+            </Link>
+            <Link to="/metronome">
+              <Button variant="outline">Metronome</Button>
             </Link>
           </div>
         </div>

@@ -49,14 +49,16 @@ export const ChordBlock: React.FC<ChordBlockProps> = ({
   return (
     <Card 
       className={`
-        w-24 h-24 cursor-pointer transition-all duration-200 
-        ${isActive ? 'bg-primary/10 scale-105 shadow-lg' : 'hover:bg-accent/50'}
+        w-24 h-24 cursor-pointer transition-all duration-300
+        ${isActive 
+          ? 'bg-primary/20 scale-105 shadow-lg border-primary/30' 
+          : 'hover:bg-accent hover:scale-[1.03]'}
       `}
       onClick={onPlay}
     >
       <CardContent className="p-0 h-full w-full flex items-center justify-center relative">
         {/* Chord display */}
-        <div className="text-3xl font-medium">
+        <div className="text-3xl font-medium transition-all duration-300">
           {getChordDisplay()}
         </div>
         
@@ -65,7 +67,7 @@ export const ChordBlock: React.FC<ChordBlockProps> = ({
           <DropdownMenuTrigger asChild>
             <Button 
               variant="ghost" 
-              className="absolute top-0 left-0 h-8 w-8 p-0 opacity-0 hover:opacity-100"
+              className="absolute top-0 left-0 h-8 w-8 p-0 opacity-0 hover:opacity-80 transition-opacity"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsRootOpen(true);
@@ -83,6 +85,7 @@ export const ChordBlock: React.FC<ChordBlockProps> = ({
                   onChange({ ...chord, root: note });
                   setIsRootOpen(false);
                 }}
+                className={chord.root === note ? 'bg-primary/20' : ''}
               >
                 {note}
               </DropdownMenuItem>
@@ -95,7 +98,7 @@ export const ChordBlock: React.FC<ChordBlockProps> = ({
           <DropdownMenuTrigger asChild>
             <Button 
               variant="ghost" 
-              className="absolute top-0 right-0 h-8 w-8 p-0 opacity-0 hover:opacity-100"
+              className="absolute top-0 right-0 h-8 w-8 p-0 opacity-0 hover:opacity-80 transition-opacity"
               onClick={(e) => {
                 e.stopPropagation();
                 setIsTypeOpen(true);
@@ -113,6 +116,7 @@ export const ChordBlock: React.FC<ChordBlockProps> = ({
                   onChange({ ...chord, type: type.id });
                   setIsTypeOpen(false);
                 }}
+                className={chord.type === type.id ? 'bg-primary/20' : ''}
               >
                 {type.name} ({type.symbol || 'Major'})
               </DropdownMenuItem>

@@ -1,10 +1,18 @@
 
-import React from "react";
+import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChordBlock } from "@/components/music/ChordBlock";
-import { Plus } from "lucide-react";
+import { Plus, Trash } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChordInProgression, ChordSectionData } from "@/components/music/ChordProgressionPlayer";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 interface ChordSectionProps {
   section: ChordSectionData;
@@ -13,6 +21,8 @@ interface ChordSectionProps {
   currentChord: number;
   updateChord: (chordIndex: number, chord: ChordInProgression) => void;
   playChord: (chord: ChordInProgression) => void;
+  onAddChord: () => void;
+  onRemoveSection: () => void;
 }
 
 export const ChordSection: React.FC<ChordSectionProps> = ({
@@ -21,12 +31,33 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
   isPlaying,
   currentChord,
   updateChord,
-  playChord
+  playChord,
+  onAddChord,
+  onRemoveSection
 }) => {
+  const [showMenu, setShowMenu] = useState(false);
+  
   return (
-    <div className="relative">
-      <div className="absolute -right-4 -top-4 bg-muted/70 backdrop-blur px-2 py-1 rounded-full text-sm font-medium z-10">
-        ×{sectionIndex + 1}
+    <div className="relative bg-accent/10 p-4 rounded-lg border border-border/50 transition-all hover:border-border">
+      <div className="absolute -right-2 -top-2 bg-primary/90 backdrop-blur px-2 py-0.5 rounded-full text-sm font-semibold z-10 text-primary-foreground shadow-sm">
+        {sectionIndex + 1}
+      </div>
+      
+      <div className="absolute right-2 top-2">
+        <DropdownMenu open={showMenu} onOpenChange={setShowMenu}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+              ⋮
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Section Actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={onRemoveSection}>
+              <Trash className="mr-2 h-4 w-4" /> Remove Section
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       
       <div className="flex flex-wrap gap-2">
@@ -40,15 +71,12 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
           />
         ))}
         
-        {/* Optional: Add button to add more chords to a section */}
+        {/* Add button that now works */}
         {section.chords.length < 8 && (
           <Button 
             variant="ghost" 
-            className="border-2 border-dashed border-muted-foreground/20 h-24 w-24 flex items-center justify-center"
-            onClick={() => {
-              // In a real implementation, this would add a new chord to the section
-              // For now, just show a placeholder
-            }}
+            className="border-2 border-dashed border-muted-foreground/20 h-24 w-24 flex items-center justify-center hover:border-primary/30 hover:bg-primary/5 transition-all duration-200"
+            onClick={onAddChord}
           >
             <Plus className="h-6 w-6 text-muted-foreground/50" />
           </Button>
