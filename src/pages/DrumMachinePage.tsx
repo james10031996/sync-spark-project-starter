@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import DrumMachine from "@/components/music/DrumMachine";
@@ -15,6 +16,7 @@ const DrumMachinePage: React.FC = () => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [isPlayingRecording, setIsPlayingRecording] = useState(false);
+  const [loadedPattern, setLoadedPattern] = useState("");
   
   // References for recording
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
