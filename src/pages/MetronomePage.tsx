@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useCallback, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,7 +7,7 @@ import { Slider } from "@/components/ui/slider";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Play, Square, Download, Record, Volume2 } from "lucide-react";
+import { Play, Square, Download, Record as RecordIcon, Volume2 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
@@ -396,7 +397,7 @@ const MetronomePage: React.FC = () => {
                       onClick={toggleRecording}
                       className={isRecording ? "bg-red-500 text-white animate-pulse" : ""}
                     >
-                      <Record className="h-4 w-4" />
+                      <RecordIcon className="h-4 w-4" />
                     </ToggleGroupItem>
                   </ToggleGroup>
                 </div>

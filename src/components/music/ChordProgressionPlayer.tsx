@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Plus, Download, Record, Music } from "lucide-react";
+import { Play, Plus, Download, Record as RecordIcon, Music } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -82,7 +83,7 @@ const commonProgressions = {
 };
 
 // Define all available instruments
-const availableInstruments = {
+const availableInstruments: Record<string, { name: string; type: string }> = {
   piano: { name: "Piano", type: "keyboard" },
   acousticPiano: { name: "Acoustic Piano", type: "keyboard" },
   electricPiano: { name: "Electric Piano", type: "keyboard" },
@@ -662,6 +663,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     function makeDistortionCurve(amount: number) {
       const k = amount;
       const n_samples = 44100;
+      const curve = new Float32Array(n_samples);
       const deg = Math.PI / 180;
       
       for (let i = 0; i < n_samples; i++) {
@@ -1449,7 +1451,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
               onClick={toggleRecording}
               className={isRecording ? "bg-red-500 text-white animate-pulse" : ""}
             >
-              <Record className="h-4 w-4" />
+              <RecordIcon className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
           

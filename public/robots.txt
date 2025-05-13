@@ -1,14 +1,25 @@
-User-agent: Googlebot
+
+# www.robotstxt.org/
+
+# Allow crawling of all content
+User-agent: *
 Allow: /
 
+# Optimization for Google Bot
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 1
+
+# Optimization for Bing Bot
 User-agent: Bingbot
 Allow: /
 
+# Social media crawlers
 User-agent: Twitterbot
 Allow: /
 
 User-agent: facebookexternalhit
 Allow: /
 
-User-agent: *
-Allow: /
+# Sitemap location
+Sitemap: https://musictools.app/sitemap.xml
