@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Plus, Download, Record as RecordIcon, Music } from "lucide-react";
+import { Play, Plus, Download, Mic, Music } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1450,7 +1450,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
               onClick={toggleRecording}
               className={isRecording ? "bg-red-500 text-white animate-pulse" : ""}
             >
-              <RecordIcon className="h-4 w-4" />
+              <Mic className="h-4 w-4" />
             </ToggleGroupItem>
           </ToggleGroup>
           

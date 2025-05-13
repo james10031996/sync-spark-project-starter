@@ -6,7 +6,7 @@ import { Slider } from "@/components/ui/slider";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Play, Pause, Download, RecordIcon } from "lucide-react";
+import { Play, Pause, Download, Mic } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
 interface MetronomePageProps {
@@ -358,7 +358,7 @@ const MetronomePage: React.FC<MetronomePageProps> = ({ className = "" }) => {
           
           {/* Recording controls */}
           <Button variant="outline" onClick={toggleRecording}>
-            {isRecording ? <RecordIcon className="mr-2 h-4 w-4 animate-pulse" /> : <RecordIcon className="mr-2 h-4 w-4" />}
+            {isRecording ? <Mic className="mr-2 h-4 w-4 animate-pulse" /> : <Mic className="mr-2 h-4 w-4" />}
             {isRecording ? "Stop Recording" : "Start Recording"}
           </Button>
           
