@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -417,7 +416,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
           octave: 4,
           attack: 0.02 + styleVariations.attackMod * 0.5,
           release: 1.5 + styleVariations.releaseMod,
-          filterFreq: 6000 + styleVariations.filterFreqMod
+          filterFreq: 6000 + styleVariations.filterFreqMod * 0.5
         };
       case "electricPiano":
         return {
@@ -663,7 +662,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     function makeDistortionCurve(amount: number) {
       const k = amount;
       const n_samples = 44100;
-      const curve = new Float32Array(n_samples);
       const deg = Math.PI / 180;
       
       for (let i = 0; i < n_samples; i++) {
@@ -1450,7 +1448,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
               aria-label="Toggle recording"
               onClick={toggleRecording}
               className={isRecording ? "bg-red-500 text-white animate-pulse" : ""}
-              tooltip="Record"
             >
               <Record className="h-4 w-4" />
             </ToggleGroupItem>
