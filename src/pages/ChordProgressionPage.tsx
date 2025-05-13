@@ -14,9 +14,9 @@ const ChordProgressionPage: React.FC = () => {
       
       <div className="container max-w-4xl mx-auto">
         <header className="mb-8 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Chord Progression Player</h1>
+          <h1 className="text-3xl font-bold animate-fade-in">Chord Progression Player</h1>
           <Link to="/">
-            <Button variant="outline">Back to Home</Button>
+            <Button variant="outline" className="transition-all hover:scale-105">Back to Home</Button>
           </Link>
         </header>
         
@@ -30,10 +30,10 @@ const ChordProgressionPage: React.FC = () => {
           </p>
           <div className="flex justify-center gap-4 mt-4">
             <Link to="/drum-machine">
-              <Button variant="outline">Drum Machine</Button>
+              <Button variant="outline" className="transition-all hover:scale-105 hover:bg-primary/10">Drum Machine</Button>
             </Link>
             <Link to="/metronome">
-              <Button variant="outline">Metronome</Button>
+              <Button variant="outline" className="transition-all hover:scale-105 hover:bg-primary/10">Metronome</Button>
             </Link>
           </div>
         </div>

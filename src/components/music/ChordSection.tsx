@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { ChordBlock } from "@/components/music/ChordBlock";
-import { Plus, Trash } from "lucide-react";
+import { Plus, Trash, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ChordInProgression, ChordSectionData } from "@/components/music/ChordProgressionPlayer";
 import { 
@@ -11,8 +11,12 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuTrigger 
+  DropdownMenuTrigger,
+  DropdownMenuGroup
 } from "@/components/ui/dropdown-menu";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface ChordSectionProps {
   section: ChordSectionData;
@@ -23,6 +27,10 @@ interface ChordSectionProps {
   playChord: (chord: ChordInProgression) => void;
   onAddChord: () => void;
   onRemoveSection: () => void;
+  allInstruments: Record<string, { name: string, type: string }>;
+  updateSectionInstruments: (instruments: string[]) => void;
+  sectionRepeat: number;
+  updateSectionRepeat: (repeats: number) => void;
 }
 
 export const ChordSection: React.FC<ChordSectionProps> = ({
@@ -33,31 +41,117 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
   updateChord,
   playChord,
   onAddChord,
-  onRemoveSection
+  onRemoveSection,
+  allInstruments,
+  updateSectionInstruments,
+  sectionRepeat,
+  updateSectionRepeat
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   
+  // Group instruments by type for easier selection
+  const instrumentsByType: Record<string, Record<string, { name: string }>> = {};
+  Object.entries(allInstruments).forEach(([id, details]) => {
+    if (!instrumentsByType[details.type]) {
+      instrumentsByType[details.type] = {};
+    }
+    instrumentsByType[details.type][id] = { name: details.name };
+  });
+  
+  // Check if an instrument is active for this section
+  const isInstrumentActive = (instrumentId: string) => {
+    return section.instruments?.includes(instrumentId) || false;
+  };
+
+  // Toggle an instrument for this section
+  const toggleSectionInstrument = (instrumentId: string) => {
+    const currentInstruments = section.instruments || [];
+    const newInstruments = isInstrumentActive(instrumentId) 
+      ? currentInstruments.filter(id => id !== instrumentId)
+      : [...currentInstruments, instrumentId];
+    
+    updateSectionInstruments(newInstruments);
+  };
+  
   return (
-    <div className="relative bg-accent/10 p-4 rounded-lg border border-border/50 transition-all hover:border-border">
+    <div className="relative bg-accent/10 p-4 rounded-lg border border-border/50 transition-all hover:border-border animate-fade-in">
       <div className="absolute -right-2 -top-2 bg-primary/90 backdrop-blur px-2 py-0.5 rounded-full text-sm font-semibold z-10 text-primary-foreground shadow-sm">
-        {sectionIndex + 1}
+        {sectionIndex + 1} {sectionRepeat > 1 && `(x${sectionRepeat})`}
       </div>
       
-      <div className="absolute right-2 top-2">
-        <DropdownMenu open={showMenu} onOpenChange={setShowMenu}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              ⋮
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Section Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={onRemoveSection}>
-              <Trash className="mr-2 h-4 w-4" /> Remove Section
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div className="flex justify-between mb-3">
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="flex items-center gap-2 cursor-pointer" onClick={() => setShowMenu(true)}>
+                <Music className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">
+                  {section.instruments && section.instruments.length > 0 
+                    ? `${section.instruments.length} instruments selected` 
+                    : "Default instruments"}
+                </span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Section-specific instruments</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        
+        <div className="flex items-center gap-2">
+          <Label className="text-sm">Repeats:</Label>
+          <Select 
+            value={sectionRepeat.toString()} 
+            onValueChange={(val) => updateSectionRepeat(parseInt(val))}
+          >
+            <SelectTrigger className="w-16 h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {[1, 2, 3, 4].map(num => (
+                <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <DropdownMenu open={showMenu} onOpenChange={setShowMenu}>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                ⋮
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Section {sectionIndex + 1} Settings</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              
+              {Object.entries(instrumentsByType).map(([type, instruments]) => (
+                <DropdownMenuGroup key={type}>
+                  <DropdownMenuLabel className="text-xs">{type.charAt(0).toUpperCase() + type.slice(1)}</DropdownMenuLabel>
+                  {Object.entries(instruments).map(([id, { name }]) => (
+                    <DropdownMenuItem 
+                      key={id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleSectionInstrument(id);
+                      }}
+                      className={isInstrumentActive(id) ? "bg-primary/20" : ""}
+                    >
+                      {isInstrumentActive(id) ? "✓ " : ""}{name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuGroup>
+              ))}
+              
+              <DropdownMenuSeparator />
+              <DropdownMenuItem 
+                onClick={onRemoveSection}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash className="mr-2 h-4 w-4" /> Remove Section
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
       
       <div className="flex flex-wrap gap-2">
@@ -71,7 +165,6 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
           />
         ))}
         
-        {/* Add button that now works */}
         {section.chords.length < 8 && (
           <Button 
             variant="ghost" 
