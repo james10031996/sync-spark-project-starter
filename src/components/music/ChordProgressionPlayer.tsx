@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -1443,7 +1442,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         </Button>
         
         <div className="flex items-center gap-2 ml-auto">
-          {/* Recording controls */}
+          {/* Recording controls - Fixed the tooltip issue by removing the tooltip prop */}
           <ToggleGroup type="single" value={isRecording ? "recording" : ""} className="mr-2">
             <ToggleGroupItem 
               value="recording"

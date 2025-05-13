@@ -1,33 +1,39 @@
-
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import { Slider } from "@/components/ui/slider";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { Play, Square, Download, Record as RecordIcon, Volume2 } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Play, Pause, Download, RecordIcon } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
-const MetronomePage: React.FC = () => {
-  const [tempo, setTempo] = useState(120);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [beatCount, setBeatCount] = useState(4);
-  const [currentBeat, setCurrentBeat] = useState(0);
-  const [volume, setVolume] = useState(0.7);
-  const [isRecording, setIsRecording] = useState(false);
+interface MetronomePageProps {
+  className?: string;
+}
+
+const MetronomePage: React.FC<MetronomePageProps> = ({ className = "" }) => {
+  const [bpm, setBpm] = useState<number>(120);
+  const [playing, setPlaying] = useState<boolean>(false);
+  const [beat, setBeat] = useState<number>(4);
+  const [subdivision, setSubdivision] = useState<number>(1);
+  const [accentColor, setAccentColor] = useState<string>("#FF0000");
+  const [subdivisionColor, setSubdivisionColor] = useState<string>("#888888");
+  const [volume, setVolume] = useState<number>(80);
+  const [isMuted, setIsMuted] = useState<boolean>(false);
+  const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
-  const [recordingAvailable, setRecordingAvailable] = useState(false);
+  const [recordingAvailable, setRecordingAvailable] = useState<boolean>(false);
 
   const audioContext = useRef<AudioContext | null>(null);
-  const intervalRef = useRef<number | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const beatRef = useRef<number>(0);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
-  // Initialize audio context
-  const initAudio = useCallback(() => {
+  // Initialize audio context with user interaction
+  const initAudioContext = () => {
     if (!audioContext.current) {
       audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       
@@ -37,187 +43,128 @@ const MetronomePage: React.FC = () => {
       }
     }
     return audioContext.current;
-  }, []);
+  };
 
-  // Play enhanced click sound
-  const playClick = useCallback((isAccent: boolean = false) => {
+  // Play a tick sound
+  const playTick = () => {
     if (!audioContext.current) return;
-    
-    const now = audioContext.current.currentTime;
-    
-    // Create oscillator with a more pleasant sound
-    const oscillator = audioContext.current.createOscillator();
+
+    const osc = audioContext.current.createOscillator();
     const gainNode = audioContext.current.createGain();
-    const filterNode = audioContext.current.createBiquadFilter();
-    
-    // Set properties based on whether it's an accent
-    oscillator.type = isAccent ? 'triangle' : 'sine';
-    oscillator.frequency.value = isAccent ? 1100 : 800;
-    
-    // Set up filter for a more pleasant sound
-    filterNode.type = 'lowpass';
-    filterNode.frequency.value = isAccent ? 4000 : 2000;
-    filterNode.Q.value = 1.0;
-    
-    // Set up gain envelope for a more natural click
-    gainNode.gain.value = 0;
-    gainNode.gain.setValueAtTime(0, now);
-    gainNode.gain.linearRampToValueAtTime(volume, now + 0.001);
-    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
-    
-    // Connect nodes
-    oscillator.connect(filterNode);
-    filterNode.connect(gainNode);
+
+    // Set volume based on mute state
+    gainNode.gain.value = isMuted ? 0 : volume / 100;
+
+    osc.type = "sine";
+    osc.frequency.value = beatRef.current === 0 ? 880 : 440; // Higher pitch for the first beat
+
+    osc.connect(gainNode);
     gainNode.connect(audioContext.current.destination);
     
-    // Connect to recording destination if recording
+    // Connect gainNode to recording destination if recording
     if (audioDestinationRef.current && isRecording) {
       gainNode.connect(audioDestinationRef.current);
     }
-    
-    // Start and stop oscillator
-    oscillator.start();
-    oscillator.stop(now + 0.1);
-    
-    // Add a subtle percussion element for accents
-    if (isAccent) {
-      const noiseBuffer = createNoiseBuffer(audioContext.current);
-      const noiseSource = audioContext.current.createBufferSource();
-      noiseSource.buffer = noiseBuffer;
-      
-      const noiseGain = audioContext.current.createGain();
-      noiseGain.gain.value = volume * 0.3;
-      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
-      
-      const noiseFilter = audioContext.current.createBiquadFilter();
-      noiseFilter.type = 'highpass';
-      noiseFilter.frequency.value = 5000;
-      
-      noiseSource.connect(noiseFilter);
-      noiseFilter.connect(noiseGain);
-      noiseGain.connect(audioContext.current.destination);
-      
-      if (audioDestinationRef.current && isRecording) {
-        noiseGain.connect(audioDestinationRef.current);
-      }
-      
-      noiseSource.start();
-      noiseSource.stop(now + 0.05);
-    }
-    
-    // Visualize the beat
-    setCurrentBeat(prev => (prev + 1) % beatCount);
-  }, [beatCount, volume, isRecording]);
 
-  // Create noise buffer for percussion sounds
-  const createNoiseBuffer = (context: AudioContext): AudioBuffer => {
-    const bufferSize = context.sampleRate * 0.05;
-    const buffer = context.createBuffer(1, bufferSize, context.sampleRate);
-    const output = buffer.getChannelData(0);
-    
-    for (let i = 0; i < bufferSize; i++) {
-      output[i] = Math.random() * 2 - 1;
-    }
-    
-    return buffer;
+    osc.start();
+    osc.stop(audioContext.current.currentTime + 0.1);
   };
 
-  // Start metronome
-  const startMetronome = useCallback(() => {
-    const context = initAudio();
-    
-    if (context.state === 'suspended') {
-      context.resume();
-    }
-    
-    setIsPlaying(true);
-    setCurrentBeat(0);
-    
-    // Clear existing interval
-    if (intervalRef.current) {
-      window.clearInterval(intervalRef.current);
-    }
-    
-    // Calculate interval from BPM
-    const intervalMs = 60000 / tempo;
-    let count = 0;
-    
-    // Start interval
-    playClick(true); // Play first beat immediately (accent)
-    
-    intervalRef.current = window.setInterval(() => {
-      count = (count + 1) % beatCount;
-      playClick(count === 0); // Accent on the first beat
-    }, intervalMs);
-  }, [tempo, beatCount, playClick, initAudio]);
+  // Play a subdivision sound
+  const playSubdivisionTick = () => {
+    if (!audioContext.current) return;
 
-  // Stop metronome
-  const stopMetronome = useCallback(() => {
-    if (intervalRef.current) {
-      window.clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    setIsPlaying(false);
-    setCurrentBeat(0);
-  }, []);
+    const osc = audioContext.current.createOscillator();
+    const gainNode = audioContext.current.createGain();
 
-  // Toggle play/stop
-  const togglePlayback = useCallback(() => {
-    if (isPlaying) {
-      stopMetronome();
+    // Set volume based on mute state
+    gainNode.gain.value = isMuted ? 0 : (volume / 100) * 0.5; // Quieter subdivision tick
+
+    osc.type = "triangle";
+    osc.frequency.value = 660; // Different pitch for subdivision
+
+    osc.connect(gainNode);
+    gainNode.connect(audioContext.current.destination);
+    
+    // Connect gainNode to recording destination if recording
+    if (audioDestinationRef.current && isRecording) {
+      gainNode.connect(audioDestinationRef.current);
+    }
+
+    osc.start();
+    osc.stop(audioContext.current.currentTime + 0.05);
+  };
+
+  // Start/stop recording
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
     } else {
-      startMetronome();
+      startRecording();
     }
-  }, [isPlaying, startMetronome, stopMetronome]);
-
+  };
+  
   // Start recording
-  const startRecording = useCallback(() => {
-    if (!audioDestinationRef.current) return;
-    
-    const recordedChunks: Blob[] = [];
-    
-    const mediaRecorder = new MediaRecorder(audioDestinationRef.current.stream);
-    mediaRecorderRef.current = mediaRecorder;
-    
-    mediaRecorder.ondataavailable = (event) => {
-      if (event.data.size > 0) {
-        recordedChunks.push(event.data);
-      }
-    };
-    
-    mediaRecorder.onstop = () => {
-      setRecordedChunks(recordedChunks);
-      setRecordingAvailable(true);
-      toast({
-        title: "Recording Complete",
-        description: "Your metronome recording is ready to download",
-      });
-    };
-    
-    mediaRecorder.start();
-    setIsRecording(true);
-    
-    // Start playing if not already
-    if (!isPlaying) {
-      startMetronome();
+  const startRecording = () => {
+    if (!audioDestinationRef.current) {
+      initAudioContext(); // Initialize audio context if not already done
     }
     
-    toast({
-      title: "Recording Started",
-      description: "The metronome is now being recorded",
-    });
-  }, [audioDestinationRef, isPlaying, startMetronome]);
-
+    if (audioDestinationRef.current) {
+      const recordedChunks: Blob[] = [];
+      
+      try {
+        const mediaRecorder = new MediaRecorder(audioDestinationRef.current.stream);
+        mediaRecorderRef.current = mediaRecorder;
+        
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          setRecordedChunks(recordedChunks);
+          setRecordingAvailable(true);
+          toast({
+            title: "Recording Complete",
+            description: "Your metronome recording is ready to download",
+          });
+        };
+        
+        mediaRecorder.start();
+        setIsRecording(true);
+        
+        // Start playing if not already
+        if (!playing) {
+          startMetronome();
+        }
+        
+        toast({
+          title: "Recording Started",
+          description: "The metronome is now being recorded",
+        });
+      } catch (err) {
+        console.error("Error starting recording:", err);
+        toast({
+          title: "Recording Failed",
+          description: "Could not start recording. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+  
   // Stop recording
-  const stopRecording = useCallback(() => {
+  const stopRecording = () => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
       mediaRecorderRef.current.stop();
       setIsRecording(false);
     }
-  }, []);
-
+  };
+  
   // Download recorded audio
-  const downloadRecording = useCallback(() => {
+  const downloadRecording = () => {
     if (recordedChunks.length === 0) return;
     
     const blob = new Blob(recordedChunks, { type: 'audio/mp3' });
@@ -226,55 +173,69 @@ const MetronomePage: React.FC = () => {
     document.body.appendChild(a);
     a.style.display = 'none';
     a.href = url;
-    a.download = `metronome-${tempo}bpm.mp3`;
+    a.download = `metronome-${bpm}bpm.mp3`;
     a.click();
     window.URL.revokeObjectURL(url);
     
     toast({
       title: "Download Started",
-      description: `Metronome at ${tempo} BPM has been downloaded`,
+      description: `Metronome audio has been downloaded as MP3`,
     });
-  }, [recordedChunks, tempo]);
+  };
 
-  // Toggle recording
-  const toggleRecording = useCallback(() => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      // Initialize audio before recording
-      initAudio();
-      startRecording();
-    }
-  }, [isRecording, stopRecording, startRecording, initAudio]);
-
-  // Update interval when tempo changes
-  useEffect(() => {
-    if (isPlaying) {
+  // Start/stop metronome
+  const toggleMetronome = () => {
+    if (playing) {
       stopMetronome();
+    } else {
       startMetronome();
     }
-  }, [tempo, isPlaying, startMetronome, stopMetronome]);
+  };
 
-  // Add keyboard controls
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.code === 'Space' && !(event.target instanceof HTMLInputElement)) {
-        event.preventDefault();
-        togglePlayback();
-      }
-    };
+  // Start metronome
+  const startMetronome = () => {
+    initAudioContext();
+    setPlaying(true);
+    beatRef.current = 0;
+
+    if (audioContext.current) {
+      const interval = 60000 / bpm; // Milliseconds per beat
+      timerRef.current = window.setInterval(() => {
+        playTick();
+        beatRef.current = (beatRef.current + 1) % beat;
+
+        // Play subdivisions
+        if (subdivision > 1) {
+          const subdivisionInterval = interval / subdivision;
+          for (let i = 1; i < subdivision; i++) {
+            setTimeout(() => {
+              playSubdivisionTick();
+            }, subdivisionInterval * i);
+          }
+        }
+      }, interval);
+    }
+  };
+
+  // Stop metronome
+  const stopMetronome = () => {
+    setPlaying(false);
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
     
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [togglePlayback]);
+    // Also stop recording if it's ongoing
+    if (isRecording) {
+      stopRecording();
+    }
+  };
 
-  // Cleanup on unmount
+  // Clean up on unmount
   useEffect(() => {
     return () => {
-      if (intervalRef.current) {
-        window.clearInterval(intervalRef.current);
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
       }
       if (audioContext.current) {
         audioContext.current.close();
@@ -283,206 +244,132 @@ const MetronomePage: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen py-8 px-4 bg-background">
+    <div className={`min-h-screen py-8 px-4 bg-background ${className} animate-fade-in`}>
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
-      
-      <div className="container max-w-4xl mx-auto">
+
+      <div className="container max-w-3xl mx-auto">
         <header className="mb-8 flex justify-between items-center">
           <h1 className="text-3xl font-bold">Metronome</h1>
           <Link to="/">
-            <Button variant="outline">Back to Home</Button>
+            <Button variant="outline" className="transition-all hover:scale-105">Back to Home</Button>
           </Link>
         </header>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="animate-fade-in">
-            <CardHeader>
-              <CardTitle>Metronome</CardTitle>
-              <CardDescription>Keep in time with adjustable tempo</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {/* Visual metronome */}
-              <div className="flex justify-center mb-8">
-                <div className="grid grid-flow-col gap-2">
-                  {Array.from({ length: beatCount }).map((_, i) => (
-                    <div 
-                      key={i}
-                      className={`w-8 h-8 rounded-full transition-colors ${
-                        currentBeat === i 
-                          ? (i === 0 ? 'bg-primary animate-pulse' : 'bg-secondary')
-                          : 'bg-muted'
-                      }`}
-                    />
-                  ))}
-                </div>
-              </div>
-              
-              {/* Tempo control */}
-              <div className="space-y-6">
-                <div>
-                  <div className="flex justify-between mb-2">
-                    <Label htmlFor="tempo">Tempo: {tempo} BPM</Label>
-                  </div>
-                  <Slider
-                    id="tempo"
-                    min={40}
-                    max={240}
-                    step={1}
-                    value={[tempo]}
-                    onValueChange={(values) => setTempo(values[0])}
-                    className="transition-all hover:scale-[1.01]"
-                  />
-                </div>
-                
-                {/* Beat count */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="beat-count">Time Signature</Label>
-                    <Select value={beatCount.toString()} onValueChange={(value) => setBeatCount(Number(value))}>
-                      <SelectTrigger id="beat-count" className="transition-all hover:border-primary">
-                        <SelectValue placeholder="Select beats per measure" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[2, 3, 4, 5, 6, 7, 8].map(num => (
-                          <SelectItem key={num} value={num.toString()}>{num}/4</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="volume" className="flex items-center gap-2">
-                      <Volume2 className="h-4 w-4" /> Volume
-                    </Label>
-                    <Slider
-                      id="volume"
-                      min={0}
-                      max={1}
-                      step={0.01}
-                      value={[volume]}
-                      onValueChange={(values) => setVolume(values[0])}
-                      className="transition-all hover:scale-[1.01]"
-                    />
-                  </div>
-                </div>
-                
-                {/* Play button */}
-                <Button 
-                  className="w-full mt-6 transition-transform hover:scale-[1.01]"
-                  onClick={togglePlayback}
-                  size="lg"
-                >
-                  {isPlaying ? (
-                    <><Square className="mr-2 h-4 w-4" /> Stop</>
-                  ) : (
-                    <><Play className="mr-2 h-4 w-4" /> Start</>
-                  )}
-                </Button>
-                
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                  Press spacebar to start/stop
-                </p>
-              </div>
-              
-              {/* Recording controls */}
-              <div className="mt-6 border-t pt-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-sm font-medium">Recording</Label>
-                  <ToggleGroup type="single" value={isRecording ? "recording" : ""}>
-                    <ToggleGroupItem 
-                      value="recording"
-                      aria-label="Toggle recording"
-                      onClick={toggleRecording}
-                      className={isRecording ? "bg-red-500 text-white animate-pulse" : ""}
-                    >
-                      <RecordIcon className="h-4 w-4" />
-                    </ToggleGroupItem>
-                  </ToggleGroup>
-                </div>
-                
-                <Button
-                  variant="outline"
-                  className="w-full mt-4 transition-all hover:bg-primary/10"
-                  onClick={downloadRecording}
-                  disabled={!recordingAvailable}
-                >
-                  <Download className="mr-2 h-4 w-4" />
-                  Download Recording
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-          
-          <div className="space-y-6">
-            <Card className="animate-fade-in">
-              <CardContent className="pt-6">
-                <h2 className="text-xl font-semibold mb-4">About Metronome</h2>
-                <p className="mb-4">
-                  A metronome helps musicians stay in rhythm while practicing or performing. 
-                  It produces steady, precise beats at a selected tempo.
-                </p>
-                <ul className="list-disc pl-5 space-y-1">
-                  <li>Set your desired tempo using the BPM slider</li>
-                  <li>Select time signature (beats per measure)</li>
-                  <li>Start/stop with the button or spacebar</li>
-                  <li>The first beat of each measure is accented</li>
-                  <li>Record and download your metronome as MP3</li>
-                </ul>
-              </CardContent>
-            </Card>
-            
-            <Card className="animate-fade-in">
-              <CardContent className="pt-6">
-                <h2 className="text-xl font-semibold mb-4">Common Tempos</h2>
-                <div className="grid grid-cols-2 gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setTempo(60)}
-                    className="justify-start transition-all hover:bg-primary/10"
-                  >
-                    Largo (60 BPM)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setTempo(76)}
-                    className="justify-start transition-all hover:bg-primary/10"
-                  >
-                    Adagio (76 BPM)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setTempo(108)}
-                    className="justify-start transition-all hover:bg-primary/10"
-                  >
-                    Andante (108 BPM)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setTempo(120)}
-                    className="justify-start transition-all hover:bg-primary/10"
-                  >
-                    Moderato (120 BPM)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setTempo(168)}
-                    className="justify-start transition-all hover:bg-primary/10"
-                  >
-                    Allegro (168 BPM)
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => setTempo(200)}
-                    className="justify-start transition-all hover:bg-primary/10"
-                  >
-                    Presto (200 BPM)
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
+
+        <Card className="p-6 space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">BPM</h2>
+            <div className="flex items-center space-x-4">
+              <Button variant="outline" size="icon" onClick={() => setBpm(prev => Math.max(1, prev - 5))}>
+                -5
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => setBpm(prev => Math.max(1, prev - 1))}>
+                -1
+              </Button>
+              <span className="text-lg font-medium">{bpm}</span>
+              <Button variant="outline" size="icon" onClick={() => setBpm(prev => prev + 1)}>
+                +1
+              </Button>
+              <Button variant="outline" size="icon" onClick={() => setBpm(prev => prev + 5)}>
+                +5
+              </Button>
+            </div>
           </div>
+          <Slider
+            min={1}
+            max={300}
+            step={1}
+            value={[bpm]}
+            onValueChange={(value) => setBpm(value[0])}
+          />
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Beat</h2>
+            <div className="flex items-center space-x-4">
+              <Button variant="outline" size="icon" onClick={() => setBeat(prev => Math.max(1, prev - 1))}>
+                -
+              </Button>
+              <span className="text-lg font-medium">{beat}</span>
+              <Button variant="outline" size="icon" onClick={() => setBeat(prev => prev + 1)}>
+                +
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Subdivision</h2>
+            <div className="flex items-center space-x-4">
+              <Button variant="outline" size="icon" onClick={() => setSubdivision(prev => Math.max(1, prev - 1))}>
+                -
+              </Button>
+              <span className="text-lg font-medium">{subdivision}</span>
+              <Button variant="outline" size="icon" onClick={() => setSubdivision(prev => prev + 1)}>
+                +
+              </Button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Accent Color</h2>
+            <input
+              type="color"
+              value={accentColor}
+              onChange={(e) => setAccentColor(e.target.value)}
+              className="h-8 w-16"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Subdivision Color</h2>
+            <input
+              type="color"
+              value={subdivisionColor}
+              onChange={(e) => setSubdivisionColor(e.target.value)}
+              className="h-8 w-16"
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Volume</h2>
+            <div className="flex items-center space-x-4">
+              <span className="text-lg font-medium">{volume}</span>
+            </div>
+          </div>
+          <Slider
+            min={0}
+            max={100}
+            step={1}
+            value={[volume]}
+            onValueChange={(value) => setVolume(value[0])}
+          />
+
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold">Mute</h2>
+            <Switch checked={isMuted} onCheckedChange={setIsMuted} />
+          </div>
+        </Card>
+
+        <div className="mt-8 flex justify-center space-x-4">
+          <Button variant={playing ? "destructive" : "default"} onClick={toggleMetronome}>
+            {playing ? <Pause className="mr-2 h-4 w-4" /> : <Play className="mr-2 h-4 w-4" />}
+            {playing ? "Stop" : "Start"}
+          </Button>
+          
+          {/* Recording controls */}
+          <Button variant="outline" onClick={toggleRecording}>
+            {isRecording ? <RecordIcon className="mr-2 h-4 w-4 animate-pulse" /> : <RecordIcon className="mr-2 h-4 w-4" />}
+            {isRecording ? "Stop Recording" : "Start Recording"}
+          </Button>
+          
+          <Button 
+            variant="outline" 
+            onClick={downloadRecording}
+            disabled={!recordingAvailable}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Download Recording
+          </Button>
         </div>
       </div>
     </div>
