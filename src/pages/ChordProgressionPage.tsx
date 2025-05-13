@@ -82,14 +82,6 @@ const ChordProgressionPage: React.FC = () => {
                 Drum Machine
               </Button>
             </Link>
-            <Link to="/metronome">
-              <Button 
-                variant="outline" 
-                className="transition-all hover:scale-105 hover:bg-primary/10 border-primary/20"
-              >
-                Metronome
-              </Button>
-            </Link>
           </motion.div>
         </motion.div>
       </div>
