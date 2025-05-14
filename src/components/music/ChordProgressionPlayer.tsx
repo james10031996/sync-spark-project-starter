@@ -79,7 +79,7 @@ const commonProgressions = {
     { root: 'C', type: 'maj7' },
     { root: 'C', type: 'maj7' },
   ],
-};
+];
 
 // Define only functional instruments
 const availableInstruments: Record<string, { name: string; type: string }> = {
