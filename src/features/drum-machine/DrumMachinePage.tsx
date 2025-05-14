@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
-import DrumMachine from "@/components/music/DrumMachine";
+import DrumMachine from "./components/DrumMachine";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from "@/components/ui/use-toast";
@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
 import { Play, Pause, Download, Mic, Stop } from "lucide-react";
+import { Helmet } from 'react-helmet';
 
 const DrumMachinePage: React.FC = () => {
   const [bpm, setBpm] = useState(120);
@@ -235,6 +236,39 @@ const DrumMachinePage: React.FC = () => {
   
   return (
     <div className="min-h-screen py-8 px-4 bg-background">
+      <Helmet>
+        <title>Online Drum Machine - Create and Record Drum Beats | MusicTools.app</title>
+        <meta name="description" content="Create, play and record your own drum beats with our free online drum machine. Features 16-step sequencer, recording functionality, and pre-made patterns." />
+        <meta name="keywords" content="drum machine, beat maker, drum sequencer, online drums, rhythm maker, drum patterns, beat sequencer, music production tool, free drum machine, drum recording app" />
+        <meta property="og:title" content="Online Drum Machine - Create and Record Drum Beats" />
+        <meta property="og:description" content="Create custom drum patterns with our free online 16-step sequencer. Save and download your beats as MP3." />
+        <meta property="og:type" content="website" />
+        <link rel="canonical" href="https://musictools.app/drum-machine" />
+        
+        {/* Additional SEO meta tags */}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="Online Drum Machine - Create and Record Drum Beats" />
+        <meta name="twitter:description" content="Create custom drum patterns with our free online 16-step sequencer. Save and download your beats as MP3." />
+        <meta property="og:site_name" content="MusicTools.app" />
+        <meta name="robots" content="index, follow" />
+        <script type="application/ld+json">
+          {`
+            {
+              "@context": "https://schema.org",
+              "@type": "SoftwareApplication",
+              "name": "Online Drum Machine",
+              "applicationCategory": "MultimediaApplication",
+              "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "USD"
+              },
+              "description": "Create, play and record your own drum beats with our free online drum machine. Features 16-step sequencer, recording functionality, and pre-made patterns."
+            }
+          `}
+        </script>
+      </Helmet>
+      
       <div className="absolute top-4 right-4">
         <ThemeToggle />
       </div>
@@ -306,6 +340,7 @@ const DrumMachinePage: React.FC = () => {
               className="w-full"
               audioDestination={audioDestinationRef.current}
               onBpmChange={(newBpm) => setBpm(newBpm)}
+              queryPattern={loadedPattern}
             />
             
             <motion.div variants={fadeIn} className="mt-6">
@@ -477,17 +512,6 @@ const DrumMachinePage: React.FC = () => {
           </motion.div>
         </div>
       </motion.div>
-      
-      {/* SEO Meta Tags added for better search visibility */}
-      <head>
-        <title>Online Drum Machine - Create and Record Drum Beats | MusicTools.app</title>
-        <meta name="description" content="Create, play and record your own drum beats with our free online drum machine. Features 16-step sequencer, recording functionality, and pre-made patterns." />
-        <meta name="keywords" content="drum machine, beat maker, drum sequencer, online drums, rhythm maker, drum patterns, beat sequencer, music production tool, free drum machine, drum recording app" />
-        <meta property="og:title" content="Online Drum Machine - Create and Record Drum Beats" />
-        <meta property="og:description" content="Create custom drum patterns with our free online 16-step sequencer. Save and download your beats as MP3." />
-        <meta property="og:type" content="website" />
-        <link rel="canonical" href="https://musictools.app/drum-machine" />
-      </head>
     </div>
   );
 };

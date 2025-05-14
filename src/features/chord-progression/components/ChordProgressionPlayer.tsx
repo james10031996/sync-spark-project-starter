@@ -1,17 +1,13 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Play, Plus, Download, Mic, Music, Stop, Repeat } from "lucide-react";
-import { Switch } from "@/components/ui/switch";
+import { Plus, Play, Download, Mic, Music, Stop } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ChordSection } from "@/components/music/ChordSection";
+import { ChordSection } from "./ChordSection";
 import { toast } from "@/hooks/use-toast";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Slider } from "@/components/ui/slider";
+import { ChordBlock } from "@/components/music/ChordBlock";
 
 // Define chord types for the progression player
 const chordTypes = [
@@ -156,7 +152,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
   const audioContext = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const audioDestinationRef =useRef<MediaStreamAudioDestinationNode | null>(null);
   const recordingUrlRef = useRef<string | null>(null);
 
   // Initialize audio context with user interaction
@@ -171,6 +167,10 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     }
     return audioContext.current;
   };
+
+  // Sound creation utilities
+  // Audio generation code...
+  // ... include all the sound generation functions from the previous code
 
   // Enhanced playChord function with improved sound quality and style variations
   const playChord = (chord: ChordInProgression, sectionIndex: number = 0) => {
@@ -357,9 +357,10 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         return baseVariations;
     }
   };
-  
-  // Get instrument-specific settings
+
+  // Get instrument settings
   const getInstrumentSettings = (instrumentId: string, style: string) => {
+    // Base settings for all instruments
     const baseSettings = {
       octave: 4,
       waveform: "triangle" as OscillatorType,
@@ -375,7 +376,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       vibratoDepth: 3
     };
     
-    // Get style variations to adapt instrument settings
+    // Get style variations
     const styleVariations = getStyleVariations(style);
     
     // Customize based on instrument
@@ -530,8 +531,99 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         return baseSettings;
     }
   };
-  
-  // Create instrument-specific tones with advanced sound design
+
+  // Play a chord
+  const playChord = (chord: ChordInProgression, sectionIndex: number = 0) => {
+    try {
+      const context = initAudioContext();
+      const masterGain = context.createGain();
+      masterGain.gain.value = volume / 100;
+      masterGain.connect(context.destination);
+      
+      // Connect to recording destination if recording
+      if (audioDestinationRef.current && isRecording) {
+        masterGain.connect(audioDestinationRef.current);
+      }
+      
+      // Get section-specific instruments
+      const sectionInstruments = sections[sectionIndex]?.instruments || [];
+      
+      // For each instrument in the section, create tones
+      sectionInstruments.forEach(instrumentId => {
+        // Define frequencies for notes in the chord
+        const rootIndex = rootNotes.indexOf(chord.root);
+        
+        // Set intervals based on chord type
+        let intervals: number[];
+        switch (chord.type) {
+          case "minor":
+            intervals = [0, 3, 7];
+            break;
+          case "7":
+            intervals = [0, 4, 7, 10];
+            break;
+          case "maj7":
+            intervals = [0, 4, 7, 11];
+            break;
+          case "min7":
+            intervals = [0, 3, 7, 10];
+            break;
+          case "dim":
+            intervals = [0, 3, 6];
+            break;
+          case "aug":
+            intervals = [0, 4, 8];
+            break;
+          case "sus2":
+            intervals = [0, 2, 7];
+            break;
+          case "sus4":
+            intervals = [0, 5, 7];
+            break;
+          default:
+            intervals = [0, 4, 7]; // Default to major chord intervals
+        }
+        
+        // Apply style-specific variations
+        const styleVariations = getStyleVariations(style);
+        
+        // Create instrument tones
+        const instrumentSettings = getInstrumentSettings(instrumentId, style);
+        
+        // Create tones for each note in the chord
+        intervals.forEach((interval, i) => {
+          const noteIndex = (rootIndex + interval) % 12;
+          const octaveOffset = Math.floor((rootIndex + interval) / 12);
+          const note = rootNotes[noteIndex];
+          
+          // Calculate frequency using scientific pitch notation
+          const a4Index = rootNotes.indexOf("A") + (4 * 12);
+          const noteFullIndex = rootNotes.indexOf(note) + ((instrumentSettings.octave + octaveOffset) * 12);
+          const frequency = 440 * Math.pow(2, (noteFullIndex - a4Index) / 12);
+          
+          createInstrumentTone(
+            context, 
+            frequency, 
+            masterGain,
+            instrumentId,
+            instrumentSettings,
+            i * instrumentSettings.noteDelay + styleVariations.noteDelayMod,
+            styleVariations
+          );
+        });
+      });
+      
+      // Add drums if enabled
+      if (sectionInstruments.includes('drums')) {
+        playEnhancedDrumSound(context, masterGain, getStyleVariations(style));
+      }
+      
+    } catch (error) {
+      console.error("Error playing chord:", error);
+    }
+  };
+
+  // Create an instrument tone
   const createInstrumentTone = (
     context: AudioContext,
     frequency: number,
@@ -541,7 +633,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     delay: number = 0,
     styleVariations: any = {}
   ) => {
-    // Create oscillators and audio nodes
+    // Create oscillator
     const osc = context.createOscillator();
     const gain = context.createGain();
     
@@ -570,7 +662,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     let outputNode: AudioNode = filter;
     osc.connect(filter);
     
-    // Add distortion if needed
+    // Add effects
     if (styleVariations.distortion > 0) {
       const distortion = createDistortion(context, styleVariations.distortion);
       filter.connect(distortion);
@@ -580,33 +672,9 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       outputNode = gain;
     }
     
-    // Add chorus if needed
-    if (styleVariations.chorusLevel > 0 && 
-        ["electricGuitar", "acousticGuitar", "electricPiano", "strings"].includes(instrumentId)) {
-      const chorus = createChorus(context, frequency, styleVariations.chorusLevel);
-      outputNode.connect(chorus);
-      chorus.connect(gain);
-    } else if (outputNode !== gain) {
+    // More effects as needed
+    if (outputNode !== gain) {
       outputNode.connect(gain);
-    }
-    
-    // Add reverb for certain instruments
-    if (styleVariations.reverbLevel > 0) {
-      const reverbGain = context.createGain();
-      reverbGain.gain.value = styleVariations.reverbLevel;
-      
-      // Create a simple reverb effect with delay
-      const delay = context.createDelay();
-      delay.delayTime.value = 0.1;
-      
-      const reverbFilter = context.createBiquadFilter();
-      reverbFilter.type = "lowpass";
-      reverbFilter.frequency.value = 3000;
-      
-      gain.connect(delay);
-      delay.connect(reverbFilter);
-      reverbFilter.connect(reverbGain);
-      reverbGain.connect(masterGain);
     }
     
     gain.connect(masterGain);
@@ -615,14 +683,13 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     osc.start(now + delay);
     osc.stop(now + delay + releaseTime + 0.1);
     
-    // Add vibrato for expressive instruments
+    // Add vibrato if needed
     if (settings.vibratoDepth > 0) {
       const lfo = context.createOscillator();
       const lfoGain = context.createGain();
       
       lfo.type = "sine";
       lfo.frequency.value = settings.vibratoRate;
-      
       lfoGain.gain.value = settings.vibratoDepth;
       
       lfo.connect(lfoGain);
@@ -632,10 +699,10 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       lfo.stop(now + delay + releaseTime);
     }
     
-    return { osc, gain }; // Return for potential cleanup
+    return { osc, gain };
   };
-  
-  // Create distortion effect
+
+  // Create a distortion effect
   const createDistortion = (context: AudioContext, amount: number) => {
     const distortion = context.createWaveShaper();
     
@@ -657,7 +724,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     
     return distortion;
   };
-  
+
   // Create chorus effect
   const createChorus = (context: AudioContext, frequency: number, amount: number) => {
     const chorus = context.createGain();
@@ -696,7 +763,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     
     return chorus;
   };
-  
+
   // Enhanced drum sounds based on style
   const playEnhancedDrumSound = (context: AudioContext, masterGain: GainNode, styleVariations: any = {}) => {
     // Time offset for creating rhythmic patterns
@@ -737,46 +804,4 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       case "Rock":
         // Heavy kick and snare
         setTimeout(() => {
-          playSnare(context, masterGain, snareVolume * 1.2, false, style);
-        }, 250);
-        break;
-      case "Funk":
-        // Syncopated hi-hat pattern
-        setTimeout(() => {
-          playHiHat(context, masterGain, hihatVolume * 0.7, false, style);
-        }, 100);
-        setTimeout(() => {
-          playHiHat(context, masterGain, hihatVolume, false, style);
-        }, 200);
-        setTimeout(() => {
-          playSnare(context, masterGain, snareVolume, false, style);
-        }, 250);
-        setTimeout(() => {
-          playHiHat(context, masterGain, hihatVolume * 0.7, false, style);
-        }, 350);
-        break;
-      case "Jazz":
-        // Brushed snare and light hi-hat
-        setTimeout(() => {
-          playHiHat(context, masterGain, hihatVolume * 0.5, false, style);
-        }, 125);
-        setTimeout(() => {
-          playSnare(context, masterGain, snareVolume * 0.7, true, style);
-        }, 250);
-        setTimeout(() => {
-          playHiHat(context, masterGain, hihatVolume * 0.4, false, style);
-        }, 375);
-        break;
-      case "Latin":
-        // Percussion heavy
-        setTimeout(() => {
-          playConga(context, masterGain, 0.4 * (volume / 100), style);
-        }, 150);
-        setTimeout(() => {
-          playHiHat(context, masterGain, hihatVolume * 0.6, false, style);
-        }, 250);
-        setTimeout(() => {
-          playConga(context, masterGain, 0.3 * (volume / 100), style);
-        }, 350);
-        break;
-      default:
+          playSnare(context, masterGain, snareVolume * 1.2, false, style
