@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -73,7 +72,8 @@ interface DrumMachineProps {
   onBpmChange?: (bpm: number) => void;
 }
 
-const DrumMachine: React.FC<DrumMachineProps> = ({
+// Changed from const DrumMachine: React.FC to export const DrumMachine: React.FC
+export const DrumMachine: React.FC<DrumMachineProps> = ({
   className = "",
   initialBpm = 120,
   queryPattern = "",
@@ -115,7 +115,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
       );
     }
     return audioContext.current;
-  }, []);
+  });
   
   // Generate enhanced drum sounds programmatically
   const createEnhancedDrumSound = async (type: string, context: AudioContext): Promise<AudioBuffer> => {
@@ -489,7 +489,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
       }
     };
   }, []);
-
+  
   // Process query parameters if they exist
   useEffect(() => {
     if (window.location.search) {
@@ -651,4 +651,5 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
-export default DrumMachine;
+// Remove this default export and rely on the named export
+// export default DrumMachine;
