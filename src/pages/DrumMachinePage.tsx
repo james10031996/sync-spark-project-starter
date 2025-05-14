@@ -8,7 +8,7 @@ import { toast } from "@/components/ui/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
-import { Play, Pause, Download, Mic } from "lucide-react";
+import { Play, Pause, Download, Mic, Stop } from "lucide-react";
 
 const DrumMachinePage: React.FC = () => {
   const [bpm, setBpm] = useState(120);
@@ -49,8 +49,33 @@ const DrumMachinePage: React.FC = () => {
       };
       
       mediaRecorder.onstop = () => {
+        if (audioChunksRef.current.length === 0) {
+          toast({
+            title: "Recording Error",
+            description: "No audio was recorded. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
         setRecordedBlob(audioBlob);
+        
+        // Create a new audio element for playback
+        if (audioElementRef.current) {
+          audioElementRef.current.pause();
+        }
+        
+        const audioURL = URL.createObjectURL(audioBlob);
+        const audio = new Audio(audioURL);
+        
+        // Store the audio element reference
+        audioElementRef.current = audio;
+        
+        // Add onended event to reset isPlayingRecording state
+        audio.onended = () => {
+          setIsPlayingRecording(false);
+        };
         
         toast({
           title: "Recording Complete",
@@ -63,6 +88,12 @@ const DrumMachinePage: React.FC = () => {
       toast({
         title: "Recording Started",
         description: "Recording your drum patterns",
+      });
+    } else {
+      toast({
+        title: "Recording Error",
+        description: "Could not initialize audio recording",
+        variant: "destructive",
       });
     }
   };
@@ -86,17 +117,49 @@ const DrumMachinePage: React.FC = () => {
   
   // Play recorded audio
   const playRecording = () => {
-    if (recordedBlob) {
-      if (!audioElementRef.current) {
-        audioElementRef.current = new Audio();
-      }
+    if (recordedBlob && audioElementRef.current) {
+      // Reset the current time to start from the beginning
+      audioElementRef.current.currentTime = 0;
       
+      // Play the recording
+      audioElementRef.current.play()
+        .then(() => {
+          setIsPlayingRecording(true);
+        })
+        .catch((error) => {
+          console.error("Error playing recording:", error);
+          toast({
+            title: "Playback Error",
+            description: "There was an error playing your recording",
+            variant: "destructive",
+          });
+        });
+    } else if (recordedBlob) {
+      // Create a new audio element if it doesn't exist
       const audioURL = URL.createObjectURL(recordedBlob);
-      audioElementRef.current.src = audioURL;
-      audioElementRef.current.onended = () => setIsPlayingRecording(false);
+      const audio = new Audio(audioURL);
       
-      audioElementRef.current.play();
-      setIsPlayingRecording(true);
+      // Store the audio element reference
+      audioElementRef.current = audio;
+      
+      // Add onended event to reset isPlayingRecording state
+      audio.onended = () => {
+        setIsPlayingRecording(false);
+      };
+      
+      // Play the audio
+      audio.play()
+        .then(() => {
+          setIsPlayingRecording(true);
+        })
+        .catch((error) => {
+          console.error("Error playing recording:", error);
+          toast({
+            title: "Playback Error",
+            description: "There was an error playing your recording",
+            variant: "destructive",
+          });
+        });
     }
   };
   
@@ -265,8 +328,8 @@ const DrumMachinePage: React.FC = () => {
                       disabled={!recordedBlob}
                       className="flex items-center gap-2"
                     >
-                      {isPlayingRecording ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      {isPlayingRecording ? "Stop" : "Play Recording"}
+                      {isPlayingRecording ? <Stop className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      {isPlayingRecording ? "Stop Playback" : "Play Recording"}
                     </Button>
                     
                     <Button 
