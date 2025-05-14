@@ -152,7 +152,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
   const audioContext = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioDestinationRef =useRef<MediaStreamAudioDestinationNode | null>(null);
+  const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
   const recordingUrlRef = useRef<string | null>(null);
 
   // Initialize audio context with user interaction
@@ -168,640 +168,627 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     return audioContext.current;
   };
 
-  // Sound creation utilities
-  // Audio generation code...
-  // ... include all the sound generation functions from the previous code
-
-  // Enhanced playChord function with improved sound quality and style variations
-  const playChord = (chord: ChordInProgression, sectionIndex: number = 0) => {
+  // Handle playing a chord with the current settings
+  const handlePlayChord = (chord: ChordInProgression, sectionIndex: number = 0) => {
+    if (!audioContext.current) {
+      initAudioContext();
+    }
+    
+    const sectionInstruments = sections[sectionIndex]?.instruments || [];
+    const context = audioContext.current as AudioContext;
+    
+    playChord(
+      chord, 
+      sectionIndex, 
+      context, 
+      volume, 
+      style, 
+      sectionInstruments, 
+      audioDestinationRef.current, 
+      isRecording
+    );
+  };
+  
+  // Play the entire chord progression
+  const playProgression = () => {
+    if (playing) {
+      stopProgression();
+      return;
+    }
+    
     try {
-      const context = initAudioContext();
-      const masterGain = context.createGain();
-      masterGain.gain.value = volume / 100;
-      masterGain.connect(context.destination);
+      setPlaying(true);
+      setCurrentSection(0);
+      setCurrentChord(0);
       
-      // Connect masterGain to recording destination if recording
-      if (audioDestinationRef.current && isRecording) {
-        masterGain.connect(audioDestinationRef.current);
+      if (!audioContext.current) {
+        initAudioContext();
       }
       
-      // Get section-specific instruments
-      const sectionInstruments = sections[sectionIndex]?.instruments || [];
+      // Start recording if needed
+      if (isRecording) {
+        startRecording();
+      }
       
-      // For each instrument in the section, create tones
-      sectionInstruments.forEach(instrumentId => {
-        // Define frequencies for notes in the chord
-        const rootIndex = rootNotes.indexOf(chord.root);
-        const chord_type = chordTypes.find((ct) => ct.id === chord.type);
+      // Calculate interval based on BPM
+      const interval = (60 / bpm) * 1000;
+      let sectionIndex = 0;
+      let chordIndex = 0;
+      
+      // Play the first chord immediately
+      if (sections[0]?.chords[0]) {
+        handlePlayChord(sections[0].chords[0], 0);
+      }
+      
+      // Set up interval to play chords in sequence
+      intervalRef.current = window.setInterval(() => {
+        const section = sections[sectionIndex];
         
-        // Set intervals based on chord type
-        let intervals: number[];
-        switch (chord.type) {
-          case "minor":
-            intervals = [0, 3, 7];
-            break;
-          case "7":
-            intervals = [0, 4, 7, 10];
-            break;
-          case "maj7":
-            intervals = [0, 4, 7, 11];
-            break;
-          case "min7":
-            intervals = [0, 3, 7, 10];
-            break;
-          case "dim":
-            intervals = [0, 3, 6];
-            break;
-          case "aug":
-            intervals = [0, 4, 8];
-            break;
-          case "sus2":
-            intervals = [0, 2, 7];
-            break;
-          case "sus4":
-            intervals = [0, 5, 7];
-            break;
-          default:
-            intervals = [0, 4, 7]; // Default to major chord intervals
+        // Increment chord index
+        chordIndex++;
+        
+        // Handle end of section
+        if (chordIndex >= section.chords.length) {
+          chordIndex = 0;
+          
+          // Move to next section
+          sectionIndex++;
+          
+          // If end of all sections, stop or loop
+          if (sectionIndex >= sections.length) {
+            sectionIndex = 0;
+            
+            // If we've completed the full progression, stop playing
+            if (!isRecording) {
+              stopProgression();
+              return;
+            }
+          }
         }
         
-        // Apply style-specific variations
-        const styleVariations = getStyleVariations(style);
+        setCurrentSection(sectionIndex);
+        setCurrentChord(chordIndex);
         
-        // Create instrument tones
-        const instrumentSettings = getInstrumentSettings(instrumentId, style);
+        // Play the current chord
+        if (sections[sectionIndex]?.chords[chordIndex]) {
+          handlePlayChord(sections[sectionIndex].chords[chordIndex], sectionIndex);
+        }
         
-        // Create tones for each note in the chord
-        intervals.forEach((interval, i) => {
-          const noteIndex = (rootIndex + interval) % 12;
-          const octaveOffset = Math.floor((rootIndex + interval) / 12);
-          const note = rootNotes[noteIndex];
-          
-          // Calculate frequency using scientific pitch notation
-          const a4Index = rootNotes.indexOf("A") + (4 * 12);
-          const noteFullIndex = rootNotes.indexOf(note) + ((instrumentSettings.octave + octaveOffset) * 12);
-          const frequency = 440 * Math.pow(2, (noteFullIndex - a4Index) / 12);
-          
-          createInstrumentTone(
-            context, 
-            frequency, 
-            masterGain,
-            instrumentId,
-            instrumentSettings,
-            i * instrumentSettings.noteDelay + styleVariations.noteDelayMod,
-            styleVariations
-          );
-        });
-      });
-      
-      // Add drums if enabled and in section instruments
-      if (sectionInstruments.includes('drums')) {
-        playEnhancedDrumSound(context, masterGain, getStyleVariations(style));
-      }
+      }, interval);
       
     } catch (error) {
-      console.error("Error playing chord:", error);
+      console.error("Error playing progression:", error);
+      stopProgression();
     }
   };
   
-  // Get style-specific variations to affect the sound
-  const getStyleVariations = (style: string) => {
-    const baseVariations = {
-      noteDelayMod: 0,
-      attackMod: 0,
-      releaseMod: 0,
-      filterFreqMod: 0,
-      vibratoDepthMod: 0,
-      vibratoRateMod: 0,
-      detuneAmount: 0,
-      reverbLevel: 0.1,
-      distortion: 0,
-      chorusLevel: 0
-    };
+  // Stop playing the progression
+  const stopProgression = () => {
+    setPlaying(false);
+    setCurrentSection(0);
+    setCurrentChord(0);
     
-    switch(style) {
-      case "Pop":
-        return {
-          ...baseVariations,
-          noteDelayMod: 0.01,
-          attackMod: 0.02,
-          filterFreqMod: 500,
-          detuneAmount: 3,
-          chorusLevel: 0.2
-        };
-      case "Jazz":
-        return {
-          ...baseVariations,
-          noteDelayMod: 0.04,
-          attackMod: 0.05,
-          releaseMod: 0.3,
-          vibratoDepthMod: 5,
-          vibratoRateMod: 2,
-          reverbLevel: 0.3,
-          filterFreqMod: 200
-        };
-      case "Rock":
-        return {
-          ...baseVariations,
-          attackMod: -0.01,
-          detuneAmount: 6,
-          filterFreqMod: -500,
-          distortion: 15,
-          reverbLevel: 0.15
-        };
-      case "Blues":
-        return {
-          ...baseVariations,
-          noteDelayMod: 0.05,
-          vibratoDepthMod: 10,
-          vibratoRateMod: 1,
-          detuneAmount: 4,
-          filterFreqMod: -300
-        };
-      case "Funk":
-        return {
-          ...baseVariations,
-          noteDelayMod: -0.01,
-          attackMod: -0.02,
-          filterFreqMod: 800,
-          reverbLevel: 0.05
-        };
-      case "Latin":
-        return {
-          ...baseVariations,
-          noteDelayMod: 0.02,
-          vibratoDepthMod: 4,
-          detuneAmount: 2,
-          reverbLevel: 0.25,
-          chorusLevel: 0.1
-        };
-      case "Soul":
-        return {
-          ...baseVariations,
-          noteDelayMod: 0.03,
-          attackMod: 0.04,
-          vibratoDepthMod: 6,
-          reverbLevel: 0.25,
-          filterFreqMod: 200
-        };
-      case "50s":
-        return {
-          ...baseVariations,
-          noteDelayMod: 0.02,
-          vibratoDepthMod: 3,
-          reverbLevel: 0.4,
-          chorusLevel: 0.05,
-          filterFreqMod: -200
-        };
-      default:
-        return baseVariations;
+    if (intervalRef.current) {
+      window.clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    
+    // Stop recording if active
+    if (isRecording && mediaRecorderRef.current?.state === "recording") {
+      stopRecording();
     }
   };
 
-  // Get instrument settings
-  const getInstrumentSettings = (instrumentId: string, style: string) => {
-    // Base settings for all instruments
-    const baseSettings = {
-      octave: 4,
-      waveform: "triangle" as OscillatorType,
-      attack: 0.03,
-      decay: 0.1,
-      sustain: 0.7,
-      release: 1.5,
-      filterType: "lowpass" as BiquadFilterType,
-      filterFreq: 5000,
-      filterQ: 1,
-      noteDelay: 0.02,
-      vibratoRate: 5,
-      vibratoDepth: 3
-    };
+  // Random chord generation based on style
+  const generateRandomChords = () => {
+    // For each section, generate random chords based on the selected style
+    const newSections = sections.map(section => {
+      return {
+        ...section,
+        chords: getRandomChordsForStyle(style)
+      };
+    });
     
-    // Get style variations
-    const styleVariations = getStyleVariations(style);
-    
-    // Customize based on instrument
-    switch(instrumentId) {
-      case "piano":
-        return {
-          ...baseSettings,
-          waveform: "triangle",
-          octave: 4,
-          attack: 0.01 + styleVariations.attackMod * 0.5,
-          release: 1.2 + styleVariations.releaseMod * 0.5,
-          filterFreq: 5000 + styleVariations.filterFreqMod * 0.5
-        };
-      case "acousticPiano":
-        return {
-          ...baseSettings,
-          waveform: "triangle",
-          octave: 4,
-          attack: 0.02 + styleVariations.attackMod * 0.5,
-          release: 1.5 + styleVariations.releaseMod,
-          filterFreq: 6000 + styleVariations.filterFreqMod * 0.5
-        };
-      case "electricPiano":
-        return {
-          ...baseSettings,
-          waveform: "sine",
-          octave: 4,
-          attack: 0.01 + styleVariations.attackMod * 0.3,
-          release: 1.0 + styleVariations.releaseMod * 0.8,
-          filterFreq: 4000 + styleVariations.filterFreqMod * 1.2
-        };
-      case "organ":
-        return {
-          ...baseSettings,
-          waveform: style === "Rock" ? "square" : "sine",
-          octave: 4,
-          attack: 0.005 + Math.max(0, styleVariations.attackMod) * 0.2,
-          release: 0.8 + Math.max(0, styleVariations.releaseMod) * 0.5,
-          filterFreq: 7000 + styleVariations.filterFreqMod * 0.7,
-          sustain: style === "Rock" ? 0.9 : 0.8
-        };
-      case "synth":
-        return {
-          ...baseSettings,
-          waveform: style === "Rock" || style === "Funk" ? "sawtooth" : "triangle",
-          octave: 4,
-          attack: 0.05 + styleVariations.attackMod * 0.8,
-          release: 0.7 + styleVariations.releaseMod * 0.6,
-          filterFreq: 3000 + styleVariations.filterFreqMod * 1.5,
-          vibratoRate: 5 + styleVariations.vibratoRateMod,
-          vibratoDepth: 3 + styleVariations.vibratoDepthMod
-        };
-      case "guitar":
-        return {
-          ...baseSettings,
-          waveform: style === "Rock" ? "sawtooth" : "triangle",
-          octave: 3,
-          attack: 0.03 + styleVariations.attackMod * 0.5,
-          release: 0.8 + styleVariations.releaseMod * 0.3,
-          filterFreq: 4500 + styleVariations.filterFreqMod * 0.8
-        };
-      case "acousticGuitar":
-        return {
-          ...baseSettings,
-          waveform: "triangle",
-          octave: 3,
-          attack: 0.04 + styleVariations.attackMod * 0.3,
-          release: 0.9 + styleVariations.releaseMod * 0.5,
-          filterFreq: 5000 + styleVariations.filterFreqMod * 0.4
-        };
-      case "electricGuitar":
-        return {
-          ...baseSettings, 
-          waveform: "sawtooth",
-          octave: 3,
-          attack: 0.02 + Math.min(0, styleVariations.attackMod) * 0.5,
-          release: 0.7 + styleVariations.releaseMod * 0.4,
-          filterFreq: 3500 + styleVariations.filterFreqMod * 0.9
-        };
-      case "bass":
-        return {
-          ...baseSettings,
-          waveform: style === "Rock" || style === "Funk" ? "sawtooth" : "triangle",
-          octave: 2,
-          attack: 0.06 + styleVariations.attackMod * 0.4,
-          release: 1.0 + styleVariations.releaseMod * 0.3,
-          filterFreq: 2000 + styleVariations.filterFreqMod * 0.3
-        };
-      case "acousticBass":
-        return {
-          ...baseSettings,
-          waveform: "triangle",
-          octave: 2,
-          attack: 0.08 + styleVariations.attackMod * 0.3,
-          release: 1.2 + styleVariations.releaseMod * 0.5,
-          filterFreq: 2200 + styleVariations.filterFreqMod * 0.2
-        };
-      case "electricBass":
-        return {
-          ...baseSettings,
-          waveform: style === "Funk" ? "sawtooth" : "triangle",
-          octave: 2,
-          attack: 0.04 + styleVariations.attackMod * 0.2,
-          release: 0.8 + styleVariations.releaseMod * 0.4,
-          filterFreq: 1500 + styleVariations.filterFreqMod * 0.4
-        };
-      case "strings":
-        return {
-          ...baseSettings,
-          waveform: "sine",
-          octave: 4,
-          attack: 0.2 + styleVariations.attackMod * 0.8,
-          release: 2.0 + styleVariations.releaseMod * 1.0,
-          vibratoRate: 6 + styleVariations.vibratoRateMod,
-          vibratoDepth: 5 + styleVariations.vibratoDepthMod,
-          filterFreq: 4000 + styleVariations.filterFreqMod * 0.5
-        };
-      case "brass":
-        return {
-          ...baseSettings,
-          waveform: style === "Jazz" || style === "Funk" ? "sawtooth" : "square",
-          octave: 4,
-          attack: 0.1 + styleVariations.attackMod * 0.6,
-          release: 0.5 + styleVariations.releaseMod * 0.7,
-          filterFreq: 3000 + styleVariations.filterFreqMod * 0.8,
-          vibratoRate: 4 + styleVariations.vibratoRateMod * 0.8,
-          vibratoDepth: 2 + styleVariations.vibratoDepthMod * 0.7
-        };
-      case "saxophone":
-        return {
-          ...baseSettings,
-          waveform: "sawtooth",
-          octave: 4,
-          attack: 0.15 + styleVariations.attackMod * 0.5,
-          release: 0.6 + styleVariations.releaseMod * 0.8,
-          vibratoRate: 5 + styleVariations.vibratoRateMod * 1.2,
-          vibratoDepth: 7 + styleVariations.vibratoDepthMod * 1.5,
-          filterFreq: 3500 + styleVariations.filterFreqMod * 0.6
-        };
-      case "flute":
-        return {
-          ...baseSettings,
-          waveform: "sine",
-          octave: 5,
-          attack: 0.1 + styleVariations.attackMod * 0.4,
-          release: 0.4 + styleVariations.releaseMod * 0.6,
-          filterFreq: 6000 + styleVariations.filterFreqMod * 0.4,
-          vibratoRate: 6 + styleVariations.vibratoRateMod * 0.9,
-          vibratoDepth: 4 + styleVariations.vibratoDepthMod
-        };
-      default:
-        return baseSettings;
-    }
+    setSections(newSections);
+    toast({
+      title: "New Chords Generated",
+      description: `Created new chord progression in ${style} style`,
+      duration: 2000,
+    });
   };
-
-  // Play a chord
-  const playChord = (chord: ChordInProgression, sectionIndex: number = 0) => {
-    try {
-      const context = initAudioContext();
-      const masterGain = context.createGain();
-      masterGain.gain.value = volume / 100;
-      masterGain.connect(context.destination);
+  
+  // Generate random chords based on style
+  const getRandomChordsForStyle = (style: string): ChordInProgression[] => {
+    // Default chord length
+    const chordCount = 4;
+    
+    // Get style-specific chord types
+    const styleChordTypes = getChordTypesForStyle(style);
+    
+    // Get a random root note (using C as base more often for musical coherence)
+    const getRandomRoot = () => {
+      // Bias towards common keys depending on style
+      let rootBias: string[] = [];
       
-      // Connect to recording destination if recording
-      if (audioDestinationRef.current && isRecording) {
-        masterGain.connect(audioDestinationRef.current);
+      switch(style) {
+        case "Jazz":
+          rootBias = ["C", "F", "Bb", "Eb", "D"];
+          break;
+        case "Blues":
+          rootBias = ["C", "G", "A", "E", "Bb"];
+          break;
+        case "Rock":
+          rootBias = ["E", "A", "D", "G", "C"];
+          break;
+        case "Funk":
+          rootBias = ["D", "E", "G", "A"];
+          break;
+        default:
+          rootBias = ["C", "G", "D", "F", "A"];
       }
       
-      // Get section-specific instruments
-      const sectionInstruments = sections[sectionIndex]?.instruments || [];
+      // 60% chance to use a common key for more musical results
+      if (Math.random() < 0.6) {
+        return rootBias[Math.floor(Math.random() * rootBias.length)];
+      }
       
-      // For each instrument in the section, create tones
-      sectionInstruments.forEach(instrumentId => {
-        // Define frequencies for notes in the chord
-        const rootIndex = rootNotes.indexOf(chord.root);
+      // Otherwise completely random
+      return rootNotes[Math.floor(Math.random() * rootNotes.length)];
+    };
+    
+    // Generate chord progression based on style patterns
+    let chords: ChordInProgression[];
+    
+    // Use common progression patterns as templates
+    const progressionTypes = Object.keys(commonProgressions);
+    const randomProgression = Object.values(commonProgressions)[
+      Math.floor(Math.random() * progressionTypes.length)
+    ];
+    
+    // Create progression with random root but keep relative structure
+    const baseRoot = getRandomRoot();
+    const baseRootIndex = rootNotes.indexOf(baseRoot);
+    
+    if (randomProgression) {
+      // Use the selected progression as a template but transpose it
+      const relativeChords = [...randomProgression];
+      
+      // Get the root of the first chord in the progression template
+      const templateRootIndex = rootNotes.indexOf(relativeChords[0].root);
+      const offset = baseRootIndex - templateRootIndex;
+      
+      // Transpose each chord in the progression
+      chords = relativeChords.map(templateChord => {
+        const originalRootIndex = rootNotes.indexOf(templateChord.root);
+        const newRootIndex = (originalRootIndex + offset + 12) % 12;
+        const newRoot = rootNotes[newRootIndex];
         
-        // Set intervals based on chord type
-        let intervals: number[];
-        switch (chord.type) {
-          case "minor":
-            intervals = [0, 3, 7];
-            break;
-          case "7":
-            intervals = [0, 4, 7, 10];
-            break;
-          case "maj7":
-            intervals = [0, 4, 7, 11];
-            break;
-          case "min7":
-            intervals = [0, 3, 7, 10];
-            break;
-          case "dim":
-            intervals = [0, 3, 6];
-            break;
-          case "aug":
-            intervals = [0, 4, 8];
-            break;
-          case "sus2":
-            intervals = [0, 2, 7];
-            break;
-          case "sus4":
-            intervals = [0, 5, 7];
-            break;
-          default:
-            intervals = [0, 4, 7]; // Default to major chord intervals
+        // Either keep the chord type or randomize a bit
+        let chordType = templateChord.type;
+        if (Math.random() < 0.3) { // 30% chance to change chord type
+          chordType = styleChordTypes[Math.floor(Math.random() * styleChordTypes.length)];
         }
         
-        // Apply style-specific variations
-        const styleVariations = getStyleVariations(style);
-        
-        // Create instrument tones
-        const instrumentSettings = getInstrumentSettings(instrumentId, style);
-        
-        // Create tones for each note in the chord
-        intervals.forEach((interval, i) => {
-          const noteIndex = (rootIndex + interval) % 12;
-          const octaveOffset = Math.floor((rootIndex + interval) / 12);
-          const note = rootNotes[noteIndex];
-          
-          // Calculate frequency using scientific pitch notation
-          const a4Index = rootNotes.indexOf("A") + (4 * 12);
-          const noteFullIndex = rootNotes.indexOf(note) + ((instrumentSettings.octave + octaveOffset) * 12);
-          const frequency = 440 * Math.pow(2, (noteFullIndex - a4Index) / 12);
-          
-          createInstrumentTone(
-            context, 
-            frequency, 
-            masterGain,
-            instrumentId,
-            instrumentSettings,
-            i * instrumentSettings.noteDelay + styleVariations.noteDelayMod,
-            styleVariations
-          );
-        });
+        return {
+          root: newRoot,
+          type: chordType
+        };
       });
-      
-      // Add drums if enabled
-      if (sectionInstruments.includes('drums')) {
-        playEnhancedDrumSound(context, masterGain, getStyleVariations(style));
-      }
-      
-    } catch (error) {
-      console.error("Error playing chord:", error);
-    }
-  };
-
-  // Create an instrument tone
-  const createInstrumentTone = (
-    context: AudioContext,
-    frequency: number,
-    masterGain: GainNode,
-    instrumentId: string,
-    settings: any,
-    delay: number = 0,
-    styleVariations: any = {}
-  ) => {
-    // Create oscillator
-    const osc = context.createOscillator();
-    const gain = context.createGain();
-    
-    // Create filter
-    const filter = context.createBiquadFilter();
-    filter.type = settings.filterType;
-    filter.frequency.value = settings.filterFreq;
-    filter.Q.value = settings.filterQ;
-    
-    // Set oscillator properties
-    osc.type = settings.waveform;
-    osc.frequency.value = frequency;
-    osc.detune.value = Math.random() * styleVariations.detuneAmount * 2 - styleVariations.detuneAmount;
-    
-    // Apply ADSR envelope
-    const now = context.currentTime;
-    const attackTime = Math.max(0.001, settings.attack);
-    const releaseTime = Math.max(0.001, settings.release);
-    
-    gain.gain.setValueAtTime(0, now + delay);
-    gain.gain.linearRampToValueAtTime(settings.sustain, now + delay + attackTime);
-    gain.gain.setValueAtTime(settings.sustain * 0.8, now + delay + settings.decay);
-    gain.gain.exponentialRampToValueAtTime(0.001, now + delay + releaseTime);
-    
-    // Connect nodes
-    let outputNode: AudioNode = filter;
-    osc.connect(filter);
-    
-    // Add effects
-    if (styleVariations.distortion > 0) {
-      const distortion = createDistortion(context, styleVariations.distortion);
-      filter.connect(distortion);
-      outputNode = distortion;
     } else {
-      filter.connect(gain);
-      outputNode = gain;
+      // Fallback: generate completely random chords
+      chords = Array(chordCount).fill(0).map(() => ({
+        root: getRandomRoot(),
+        type: styleChordTypes[Math.floor(Math.random() * styleChordTypes.length)]
+      }));
     }
     
-    // More effects as needed
-    if (outputNode !== gain) {
-      outputNode.connect(gain);
-    }
-    
-    gain.connect(masterGain);
-    
-    // Start and stop oscillator
-    osc.start(now + delay);
-    osc.stop(now + delay + releaseTime + 0.1);
-    
-    // Add vibrato if needed
-    if (settings.vibratoDepth > 0) {
-      const lfo = context.createOscillator();
-      const lfoGain = context.createGain();
-      
-      lfo.type = "sine";
-      lfo.frequency.value = settings.vibratoRate;
-      lfoGain.gain.value = settings.vibratoDepth;
-      
-      lfo.connect(lfoGain);
-      lfoGain.connect(osc.frequency);
-      
-      lfo.start(now + delay + 0.1);
-      lfo.stop(now + delay + releaseTime);
-    }
-    
-    return { osc, gain };
+    return chords;
   };
-
-  // Create a distortion effect
-  const createDistortion = (context: AudioContext, amount: number) => {
-    const distortion = context.createWaveShaper();
-    
-    function makeDistortionCurve(amount: number) {
-      const k = amount;
-      const n_samples = 44100;
-      const curve = new Float32Array(n_samples);
-      const deg = Math.PI / 180;
-      
-      for (let i = 0; i < n_samples; i++) {
-        const x = i * 2 / n_samples - 1;
-        curve[i] = (3 + k) * x * 20 * deg / (Math.PI + k * Math.abs(x));
-      }
-      return curve;
-    }
-    
-    distortion.curve = makeDistortionCurve(amount);
-    distortion.oversample = "4x";
-    
-    return distortion;
-  };
-
-  // Create chorus effect
-  const createChorus = (context: AudioContext, frequency: number, amount: number) => {
-    const chorus = context.createGain();
-    
-    // Create two detuned oscillators
-    const detune1 = amount * 5;
-    const detune2 = -amount * 5;
-    
-    const osc1 = context.createOscillator();
-    osc1.type = "sine";
-    osc1.frequency.value = frequency;
-    osc1.detune.value = detune1;
-    
-    const osc2 = context.createOscillator();
-    osc2.type = "sine";
-    osc2.frequency.value = frequency;
-    osc2.detune.value = detune2;
-    
-    const gain1 = context.createGain();
-    gain1.gain.value = amount * 0.3;
-    
-    const gain2 = context.createGain();
-    gain2.gain.value = amount * 0.3;
-    
-    osc1.connect(gain1);
-    osc2.connect(gain2);
-    gain1.connect(chorus);
-    gain2.connect(chorus);
-    
-    osc1.start();
-    osc2.start();
-    setTimeout(() => {
-      osc1.stop();
-      osc2.stop();
-    }, 5000); // Stop after 5 seconds
-    
-    return chorus;
-  };
-
-  // Enhanced drum sounds based on style
-  const playEnhancedDrumSound = (context: AudioContext, masterGain: GainNode, styleVariations: any = {}) => {
-    // Time offset for creating rhythmic patterns
-    const now = context.currentTime;
-    const kickVolume = 0.8 * (volume / 100);
-    const snareVolume = 0.6 * (volume / 100);
-    const hihatVolume = 0.4 * (volume / 100);
-    
-    // Improved kick drum
-    const kickOsc = context.createOscillator();
-    const kickGain = context.createGain();
-    
-    // Style-specific kick drum
-    if (style === "Rock") {
-      kickOsc.frequency.value = 80;
-      kickOsc.type = "square";
-    } else if (style === "Jazz") {
-      kickOsc.frequency.value = 110;
-      kickOsc.type = "sine";
-    } else {
-      kickOsc.frequency.value = 100;
-      kickOsc.type = "triangle";
-    }
-    
-    kickOsc.frequency.exponentialRampToValueAtTime(0.01, now + 0.4);
-    
-    kickGain.gain.setValueAtTime(kickVolume, now);
-    kickGain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-    
-    kickOsc.connect(kickGain);
-    kickGain.connect(masterGain);
-    
-    kickOsc.start(now);
-    kickOsc.stop(now + 0.4);
-    
-    // Style-specific drum patterns
+  
+  // Get appropriate chord types for different musical styles
+  const getChordTypesForStyle = (style: string): string[] => {
     switch(style) {
+      case "Jazz":
+        return ["maj7", "min7", "7", "dim", "sus4"];
+      case "Blues":
+        return ["7", "min7", "major", "minor"];
       case "Rock":
-        // Heavy kick and snare
-        setTimeout(() => {
-          playSnare(context, masterGain, snareVolume * 1.2, false, style
+        return ["major", "minor", "7", "sus4"];
+      case "Funk":
+        return ["7", "min7", "major", "sus4"];
+      case "Latin":
+        return ["major", "minor", "7", "maj7"];
+      case "50s":
+        return ["major", "minor", "7"];
+      case "Soul":
+        return ["maj7", "min7", "7"];
+      case "Pop":
+      default:
+        return ["major", "minor", "sus2", "sus4"];
+    }
+  };
+  
+  // Update a chord in the progression
+  const updateChord = (sectionIndex: number, chordIndex: number, chord: ChordInProgression) => {
+    setSections(prevSections => {
+      const newSections = [...prevSections];
+      const newChords = [...newSections[sectionIndex].chords];
+      newChords[chordIndex] = chord;
+      newSections[sectionIndex] = { ...newSections[sectionIndex], chords: newChords };
+      return newSections;
+    });
+  };
+  
+  // Add a chord to a section
+  const addChord = (sectionIndex: number) => {
+    setSections(prevSections => {
+      const newSections = [...prevSections];
+      const section = newSections[sectionIndex];
+      const lastChord = section.chords[section.chords.length - 1] || { root: "C", type: "major" };
+      
+      // Add a new chord with the same properties as the last one
+      newSections[sectionIndex] = {
+        ...section,
+        chords: [
+          ...section.chords,
+          { ...lastChord } // Clone the last chord
+        ]
+      };
+      
+      return newSections;
+    });
+  };
+  
+  // Add a new section
+  const addSection = () => {
+    const newSectionId = `section-${sections.length + 1}`;
+    
+    // Copy instruments and chord pattern from the last section
+    const lastSection = sections[sections.length - 1];
+    const lastSectionInstruments = lastSection?.instruments || ["piano", "bass"];
+    
+    setSections(prevSections => [
+      ...prevSections,
+      {
+        id: newSectionId,
+        chords: [
+          { root: "C", type: "major" },
+          { root: "G", type: "7" },
+          { root: "A", type: "minor" },
+          { root: "F", type: "major" },
+        ],
+        instruments: lastSectionInstruments,
+      }
+    ]);
+  };
+  
+  // Remove a section
+  const removeSection = (sectionIndex: number) => {
+    if (sections.length <= 1) {
+      toast({
+        title: "Cannot Remove Section",
+        description: "You need at least one section in the progression",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSections(prevSections => prevSections.filter((_, index) => index !== sectionIndex));
+  };
+  
+  // Update section-specific instruments
+  const updateSectionInstruments = (sectionIndex: number, instruments: string[]) => {
+    setSections(prevSections => {
+      const newSections = [...prevSections];
+      newSections[sectionIndex] = {
+        ...newSections[sectionIndex],
+        instruments
+      };
+      return newSections;
+    });
+  };
+
+  // Start recording
+  const startRecording = () => {
+    if (!audioContext.current || !audioDestinationRef.current) {
+      initAudioContext();
+    }
+    
+    if (audioDestinationRef.current) {
+      try {
+        setIsRecording(true);
+        setRecordedChunks([]);
+        
+        const mediaRecorder = new MediaRecorder(audioDestinationRef.current.stream);
+        mediaRecorderRef.current = mediaRecorder;
+        
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) {
+            setRecordedChunks(prev => [...prev, e.data]);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(recordedChunks, { type: 'audio/mp3' });
+          const url = URL.createObjectURL(blob);
+          
+          // Clean up previous recording URL
+          if (recordingUrlRef.current) {
+            URL.revokeObjectURL(recordingUrlRef.current);
+          }
+          
+          recordingUrlRef.current = url;
+          
+          // Create audio element for playback
+          const audio = new Audio(url);
+          setRecordedAudio(audio);
+          setRecordingAvailable(true);
+          
+          toast({
+            title: "Recording Complete",
+            description: "Your chord progression has been recorded",
+          });
+        };
+        
+        mediaRecorder.start();
+        
+        toast({
+          title: "Recording Started",
+          description: "Recording your chord progression",
+        });
+        
+      } catch (error) {
+        console.error("Error starting recording:", error);
+        toast({
+          title: "Recording Error",
+          description: "Could not start recording. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+  
+  // Stop recording
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+  
+  // Play recorded audio
+  const playRecording = () => {
+    if (recordedAudio) {
+      recordedAudio.currentTime = 0;
+      recordedAudio.play();
+      setIsPlayingRecording(true);
+      
+      // Listen for when playback ends
+      recordedAudio.onended = () => {
+        setIsPlayingRecording(false);
+      };
+    }
+  };
+  
+  // Stop playing recorded audio
+  const stopPlayingRecording = () => {
+    if (recordedAudio) {
+      recordedAudio.pause();
+      recordedAudio.currentTime = 0;
+      setIsPlayingRecording(false);
+    }
+  };
+  
+  // Download recorded audio as MP3
+  const downloadRecording = () => {
+    if (recordingUrlRef.current) {
+      const a = document.createElement("a");
+      a.style.display = "none";
+      a.href = recordingUrlRef.current;
+      a.download = `chord-progression-${style}-${new Date().toISOString()}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+      }, 100);
+    }
+  };
+  
+  // Cleanup when component unmounts
+  useEffect(() => {
+    return () => {
+      // Clean up all timers and audio resources
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+        mediaRecorderRef.current.stop();
+      }
+      
+      if (recordingUrlRef.current) {
+        URL.revokeObjectURL(recordingUrlRef.current);
+      }
+      
+      if (audioContext.current) {
+        audioContext.current.close().catch(console.error);
+      }
+    };
+  }, []);
+  
+  return (
+    <Card className="shadow-lg bg-background/80 backdrop-blur-sm">
+      <CardContent className="p-6">
+        <div className="flex flex-col gap-4">
+          {/* Style and Controls */}
+          <div className="flex flex-col sm:flex-row justify-between gap-4 items-center mb-2">
+            <div className="flex flex-col gap-2 w-full sm:w-auto">
+              <Label htmlFor="style">Style</Label>
+              <Select
+                value={style}
+                onValueChange={setStyle}
+              >
+                <SelectTrigger id="style" className="w-[180px]">
+                  <SelectValue placeholder="Select style" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Pop">Pop</SelectItem>
+                  <SelectItem value="Rock">Rock</SelectItem>
+                  <SelectItem value="Jazz">Jazz</SelectItem>
+                  <SelectItem value="Blues">Blues</SelectItem>
+                  <SelectItem value="Funk">Funk</SelectItem>
+                  <SelectItem value="Latin">Latin</SelectItem>
+                  <SelectItem value="50s">50's</SelectItem>
+                  <SelectItem value="Soul">Soul</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="flex flex-col gap-2 w-full sm:w-auto">
+              <Label htmlFor="bpm">Tempo: {bpm} BPM</Label>
+              <div className="w-[180px]">
+                <Slider
+                  id="bpm"
+                  min={40}
+                  max={200}
+                  step={1}
+                  value={[bpm]}
+                  onValueChange={(values) => setBpm(values[0])}
+                  className="cursor-pointer"
+                />
+              </div>
+            </div>
+            
+            <div className="flex flex-col gap-2 w-full sm:w-auto">
+              <Label htmlFor="volume">Volume: {volume}%</Label>
+              <div className="w-[180px]">
+                <Slider
+                  id="volume"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={[volume]}
+                  onValueChange={(values) => setVolume(values[0])}
+                  className="cursor-pointer"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Main controls */}
+          <div className="flex flex-wrap gap-2 mb-4 justify-center">
+            <Button
+              onClick={playProgression}
+              variant={playing ? "outline" : "default"}
+              size="lg"
+              className={`gap-2 ${playing ? "bg-red-100 hover:bg-red-200 border-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:border-red-900/50" : ""}`}
+            >
+              {playing ? (
+                <>
+                  <Stop className="w-5 h-5" /> Stop
+                </>
+              ) : (
+                <>
+                  <Play className="w-5 h-5" /> Play Progression
+                </>
+              )}
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              className="gap-2"
+              onClick={generateRandomChords}
+            >
+              <Music className="w-5 h-5" /> Generate Chords
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              className={`gap-2 ${isRecording ? "bg-red-100 hover:bg-red-200 border-red-200 text-red-600 dark:bg-red-900/30 dark:hover:bg-red-900/50 dark:border-red-900/50 dark:text-red-400" : ""}`}
+              onClick={() => {
+                if (isRecording) {
+                  stopRecording();
+                } else {
+                  if (!playing) {
+                    startRecording();
+                    playProgression();
+                  } else {
+                    startRecording();
+                  }
+                }
+              }}
+              disabled={isPlayingRecording}
+            >
+              <Mic className="w-5 h-5" /> {isRecording ? "Stop Recording" : "Record"}
+            </Button>
+            
+            {recordingAvailable && (
+              <>
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="gap-2"
+                  onClick={isPlayingRecording ? stopPlayingRecording : playRecording}
+                >
+                  {isPlayingRecording ? (
+                    <>
+                      <Stop className="w-5 h-5" /> Stop
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-5 h-5" /> Play Recording
+                    </>
+                  )}
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="gap-2"
+                  onClick={downloadRecording}
+                >
+                  <Download className="w-5 h-5" /> Download MP3
+                </Button>
+              </>
+            )}
+          </div>
+          
+          {/* Sections */}
+          <div className="flex flex-col gap-4">
+            {sections.map((section, sectionIndex) => (
+              <ChordSection
+                key={section.id}
+                section={section}
+                sectionIndex={sectionIndex}
+                isPlaying={playing && currentSection === sectionIndex}
+                currentChord={currentChord}
+                updateChord={(chordIndex, chord) => updateChord(sectionIndex, chordIndex, chord)}
+                playChord={(chord) => handlePlayChord(chord, sectionIndex)}
+                onAddChord={() => addChord(sectionIndex)}
+                onRemoveSection={() => removeSection(sectionIndex)}
+                allInstruments={availableInstruments}
+                updateSectionInstruments={(instruments) => updateSectionInstruments(sectionIndex, instruments)}
+                sectionRepeat={1}  // Default value (repeat functionality removed)
+                updateSectionRepeat={() => {}} // Empty function as repeat is removed
+              />
+            ))}
+            
+            {sections.length < 4 && (
+              <Button
+                variant="ghost"
+                className="border-2 border-dashed border-muted-foreground/20 py-8 hover:border-primary/30 hover:bg-primary/5 transition-all"
+                onClick={addSection}
+              >
+                <Plus className="mr-2 h-5 w-5" /> Add Section
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default ChordProgressionPlayer;

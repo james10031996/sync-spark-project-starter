@@ -11,38 +11,15 @@ const ChordProgressionPage: React.FC = () => {
   return (
     <div className="min-h-screen py-8 px-4 bg-gradient-to-br from-background to-accent/10">
       <Helmet>
-        <title>Chord Progression Player | Create and Record Musical Chord Sequences</title>
-        <meta name="description" content="Create beautiful chord progressions with our interactive chord progression player. Choose from popular styles like jazz, pop, and rock. Record and download your compositions." />
-        <meta name="keywords" content="chord progression, music theory, chord player, music composition, songwriting tool, chord generator, music education, jazz chords, pop chords, music production, online music tools" />
-        <meta property="og:title" content="Chord Progression Player | Create Musical Chord Sequences" />
-        <meta property="og:description" content="Create beautiful chord progressions with our interactive chord player. Choose from popular styles like jazz, pop, and rock." />
+        <title>Chord Progression Player | Free Online Music Tool</title>
+        <meta name="description" content="Create and play chord progressions with our free online chord progression player. Choose from different musical styles, instruments, and customize your sound." />
+        <meta name="keywords" content="chord progression, chord player, online music tool, music production, songwriting, chord generator, music theory, music composition, free chord tool, music education" />
+        <meta property="og:title" content="Chord Progression Player | Free Online Music Tool" />
+        <meta property="og:description" content="Create custom chord progressions with various instruments and styles. Download your compositions as MP3." />
         <meta property="og:type" content="website" />
-        <link rel="canonical" href="https://musictools.app/chord-progression" />
-        
-        {/* Additional SEO meta tags */}
-        <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="Chord Progression Player | Create Musical Chord Sequences" />
-        <meta name="twitter:description" content="Create beautiful chord progressions with our interactive chord player. Choose from popular styles like jazz, pop, and rock." />
-        <meta property="og:site_name" content="MusicTools.app" />
-        <meta name="robots" content="index, follow" />
-        <script type="application/ld+json">
-          {`
-            {
-              "@context": "https://schema.org",
-              "@type": "SoftwareApplication",
-              "name": "Chord Progression Player",
-              "applicationCategory": "MultimediaApplication",
-              "offers": {
-                "@type": "Offer",
-                "price": "0",
-                "priceCurrency": "USD"
-              },
-              "description": "Create beautiful chord progressions with our interactive chord player. Choose from popular styles like jazz, pop, and rock."
-            }
-          `}
-        </script>
+        <meta property="og:url" content="https://musictools.app/chord-progression" />
       </Helmet>
-      
+
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
