@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Link } from "react-router-dom";
 import DrumMachine from "@/components/music/DrumMachine";
@@ -8,7 +7,7 @@ import { toast } from "@/components/ui/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
-import { Play, Pause, Download, Mic, Stop } from "lucide-react";
+import { Play, Pause, Download, Mic, Square } from "lucide-react";
 
 const DrumMachinePage: React.FC = () => {
   const [bpm, setBpm] = useState(120);
