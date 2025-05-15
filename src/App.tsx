@@ -9,7 +9,6 @@ import NotFound from "./pages/NotFound";
 import ChordPlayerPage from "./pages/ChordPlayerPage";
 import ChordProgressionPage from "./pages/ChordProgressionPage";
 import DrumMachinePage from "./pages/DrumMachinePage";
-import MetronomePage from "./pages/MetronomePage";
 
 // Create a client with cache configuration for better performance
 const queryClient = new QueryClient({
@@ -34,7 +33,6 @@ const App = () => (
           <Route path="/chord-player" element={<Navigate to="/chord-progression" replace />} />
           <Route path="/chord-progression" element={<ChordProgressionPage />} />
           <Route path="/drum-machine" element={<DrumMachinePage />} />
-          <Route path="/metronome" element={<MetronomePage />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
