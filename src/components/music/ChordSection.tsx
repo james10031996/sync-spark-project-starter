@@ -49,32 +49,14 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
 }) => {
   const [showMenu, setShowMenu] = useState(false);
   
-  // Filter only available instruments by type
-  const getAvailableInstruments = () => {
-    const instrumentsByType: Record<string, Record<string, { name: string }>> = {};
-    
-    // Only include instruments that are actually functional
-    const functionalInstruments = [
-      "piano", "acousticPiano", "electricPiano", "organ", "synth",
-      "guitar", "acousticGuitar", "electricGuitar", 
-      "bass", "acousticBass", "electricBass",
-      "drums", "strings", "brass", "saxophone", "flute"
-    ];
-    
-    Object.entries(allInstruments).forEach(([id, details]) => {
-      // Only add instruments that are actually functional
-      if (functionalInstruments.includes(id)) {
-        if (!instrumentsByType[details.type]) {
-          instrumentsByType[details.type] = {};
-        }
-        instrumentsByType[details.type][id] = { name: details.name };
-      }
-    });
-    
-    return instrumentsByType;
-  };
-  
-  const instrumentsByType = getAvailableInstruments();
+  // Group instruments by type for easier selection
+  const instrumentsByType: Record<string, Record<string, { name: string }>> = {};
+  Object.entries(allInstruments).forEach(([id, details]) => {
+    if (!instrumentsByType[details.type]) {
+      instrumentsByType[details.type] = {};
+    }
+    instrumentsByType[details.type][id] = { name: details.name };
+  });
   
   // Check if an instrument is active for this section
   const isInstrumentActive = (instrumentId: string) => {
@@ -106,7 +88,7 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
                 <span className="text-sm font-medium">
                   {section.instruments && section.instruments.length > 0 
                     ? `${section.instruments.length} instruments selected` 
-                    : "No instruments selected"}
+                    : "Default instruments"}
                 </span>
               </div>
             </TooltipTrigger>

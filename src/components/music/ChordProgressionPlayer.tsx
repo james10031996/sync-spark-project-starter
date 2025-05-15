@@ -43,17 +43,17 @@ const commonProgressions = {
     { root: 'C', type: 'maj7' },
     { root: 'C', type: 'maj7' },
   ],
-  'Blues I-IV-V': [
-    { root: 'C', type: '7' },
-    { root: 'F', type: '7' },
-    { root: 'G', type: '7' },
-    { root: 'C', type: '7' },
-  ],
   '50s I-vi-IV-V': [
     { root: 'C', type: 'major' },
     { root: 'A', type: 'minor' },
     { root: 'F', type: 'major' },
     { root: 'G', type: 'major' },
+  ],
+  'Blues I-IV-V': [
+    { root: 'C', type: '7' },
+    { root: 'F', type: '7' },
+    { root: 'G', type: '7' },
+    { root: 'C', type: '7' },
   ],
   'Funk I-IV-V': [
     { root: 'D', type: '7' },
@@ -145,21 +145,36 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
   const [currentSection, setCurrentSection] = useState<number>(0);
   const [currentChord, setCurrentChord] = useState<number>(0);
   const [style, setStyle] = useState<string>("Pop");
+  const [activeInstruments, setActiveInstruments] = useState<Record<string, boolean>>({
+    piano: true,
+    acousticPiano: false,
+    electricPiano: false,
+    organ: false,
+    synth: false,
+    guitar: true,
+    acousticGuitar: false,
+    electricGuitar: false,
+    bass: true,
+    acousticBass: false,
+    electricBass: false,
+    drums: false,
+    strings: false,
+    brass: false,
+    saxophone: false,
+    flute: false
+  });
   const [volume, setVolume] = useState<number>(80);
   
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
   const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
   const [recordingAvailable, setRecordingAvailable] = useState(false);
-  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
-  const [recordedAudio, setRecordedAudio] = useState<HTMLAudioElement | null>(null);
 
   // Audio context and timer references
   const audioContext = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
-  const recordingUrlRef = useRef<string | null>(null);
 
   // Initialize audio context with user interaction
   const initAudioContext = () => {
@@ -187,50 +202,53 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         masterGain.connect(audioDestinationRef.current);
       }
       
-      // Get section-specific instruments
-      const sectionInstruments = sections[sectionIndex]?.instruments || [];
+      // Determine which instruments to use (chord-specific, section-specific, or global)
+      const instrumentsToUse = chord.instruments || 
+                               sections[sectionIndex]?.instruments || 
+                               Object.keys(activeInstruments).filter(inst => activeInstruments[inst]);
       
-      // For each instrument in the section, create tones
-      sectionInstruments.forEach(instrumentId => {
-        // Define frequencies for notes in the chord
-        const rootIndex = rootNotes.indexOf(chord.root);
-        const chord_type = chordTypes.find((ct) => ct.id === chord.type);
+      // Define frequencies for notes in the chord
+      const rootIndex = rootNotes.indexOf(chord.root);
+      const chord_type = chordTypes.find((ct) => ct.id === chord.type);
+      
+      // Set intervals based on chord type
+      let intervals: number[];
+      switch (chord.type) {
+        case "minor":
+          intervals = [0, 3, 7];
+          break;
+        case "7":
+          intervals = [0, 4, 7, 10];
+          break;
+        case "maj7":
+          intervals = [0, 4, 7, 11];
+          break;
+        case "min7":
+          intervals = [0, 3, 7, 10];
+          break;
+        case "dim":
+          intervals = [0, 3, 6];
+          break;
+        case "aug":
+          intervals = [0, 4, 8];
+          break;
+        case "sus2":
+          intervals = [0, 2, 7];
+          break;
+        case "sus4":
+          intervals = [0, 5, 7];
+          break;
+        default:
+          intervals = [0, 4, 7]; // Default to major chord intervals
+      }
+      
+      // Apply style-specific variations
+      const styleVariations = getStyleVariations(style);
+      
+      // Create tones for each instrument
+      instrumentsToUse.forEach(instrumentId => {
+        if (!activeInstruments[instrumentId]) return;
         
-        // Set intervals based on chord type
-        let intervals: number[];
-        switch (chord.type) {
-          case "minor":
-            intervals = [0, 3, 7];
-            break;
-          case "7":
-            intervals = [0, 4, 7, 10];
-            break;
-          case "maj7":
-            intervals = [0, 4, 7, 11];
-            break;
-          case "min7":
-            intervals = [0, 3, 7, 10];
-            break;
-          case "dim":
-            intervals = [0, 3, 6];
-            break;
-          case "aug":
-            intervals = [0, 4, 8];
-            break;
-          case "sus2":
-            intervals = [0, 2, 7];
-            break;
-          case "sus4":
-            intervals = [0, 5, 7];
-            break;
-          default:
-            intervals = [0, 4, 7]; // Default to major chord intervals
-        }
-        
-        // Apply style-specific variations
-        const styleVariations = getStyleVariations(style);
-        
-        // Create instrument tones
         const instrumentSettings = getInstrumentSettings(instrumentId, style);
         
         // Create tones for each note in the chord
@@ -256,9 +274,9 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         });
       });
       
-      // Add drums if enabled and in section instruments
-      if (sectionInstruments.includes('drums')) {
-        playEnhancedDrumSound(context, masterGain, getStyleVariations(style));
+      // Add drums if enabled
+      if (activeInstruments.drums && (instrumentsToUse.includes('drums') || !sections[sectionIndex]?.instruments)) {
+        playEnhancedDrumSound(context, masterGain, styleVariations);
       }
       
     } catch (error) {
@@ -779,3 +797,882 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         }, 250);
         setTimeout(() => {
           playConga(context, masterGain, 0.3 * (volume / 100), style);
+        }, 350);
+        break;
+      case "Blues":
+        // Shuffle feel
+        setTimeout(() => {
+          playHiHat(context, masterGain, hihatVolume * 0.6, false, style);
+        }, 150);
+        setTimeout(() => {
+          playSnare(context, masterGain, snareVolume * 0.8, false, style);
+        }, 250);
+        break;
+      case "Soul":
+        // Soul backbeat
+        setTimeout(() => {
+          playHiHat(context, masterGain, hihatVolume * 0.5, false, style);
+        }, 125);
+        setTimeout(() => {
+          playSnare(context, masterGain, snareVolume * 1.1, false, style);
+        }, 250);
+        setTimeout(() => {
+          playHiHat(context, masterGain, hihatVolume * 0.5, false, style);
+        }, 375);
+        break;
+      default:
+        // Standard beat for other styles
+        setTimeout(() => {
+          playHiHat(context, masterGain, hihatVolume, false, style);
+        }, 200);
+        if (Math.random() > 0.3) {
+          setTimeout(() => {
+            playSnare(context, masterGain, snareVolume, false, style);
+          }, 250);
+        }
+    }
+  };
+  
+  // Helper function to create snare drum sound
+  const playSnare = (context: AudioContext, masterGain: GainNode, volume: number = 0.6, brushed: boolean = false, style: string) => {
+    const bufferSize = context.sampleRate * 0.1;
+    const noiseBuffer = context.createBuffer(1, bufferSize, context.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    
+    // Create noise sample
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    
+    // Snare body - adjust based on style
+    const snareOsc = context.createOscillator();
+    const snareGain = context.createGain();
+    const snareFilter = context.createBiquadFilter();
+    
+    // Style-specific snare tuning
+    if (style === "Rock") {
+      snareOsc.frequency.value = 200;
+      snareFilter.frequency.value = brushed ? 3500 : 2500;
+    } else if (style === "Jazz") {
+      snareOsc.frequency.value = 150;
+      snareFilter.frequency.value = brushed ? 4000 : 3000;
+    } else if (style === "Funk") {
+      snareOsc.frequency.value = 180;
+      snareFilter.frequency.value = 3200;
+    } else if (style === "Blues") {
+      snareOsc.frequency.value = 160;
+      snareFilter.frequency.value = brushed ? 2800 : 2200;
+    } else {
+      snareOsc.frequency.value = 180;
+      snareFilter.frequency.value = brushed ? 3000 : 2000;
+    }
+    
+    snareOsc.type = "triangle";
+    snareFilter.type = "bandpass";
+    
+    // Style-specific envelope
+    const decayTime = style === "Rock" ? 0.15 : (brushed ? 0.3 : 0.2);
+    
+    snareGain.gain.setValueAtTime(volume * 0.5, context.currentTime);
+    snareGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + decayTime);
+    
+    snareOsc.connect(snareFilter);
+    snareFilter.connect(snareGain);
+    snareGain.connect(masterGain);
+    
+    snareOsc.start(context.currentTime);
+    snareOsc.stop(context.currentTime + decayTime);
+    
+    // Snare noise
+    const snareNoise = context.createBufferSource();
+    snareNoise.buffer = noiseBuffer;
+    
+    const snareNoiseGain = context.createGain();
+    const snareNoiseFilter = context.createBiquadFilter();
+    
+    // Style-specific noise filter
+    snareNoiseFilter.type = "highpass";
+    if (style === "Rock") {
+      snareNoiseFilter.frequency.value = brushed ? 1800 : 1300;
+    } else if (style === "Jazz") {
+      snareNoiseFilter.frequency.value = brushed ? 2000 : 1600;
+    } else {
+      snareNoiseFilter.frequency.value = brushed ? 1500 : 1000;
+    }
+    
+    snareNoiseGain.gain.setValueAtTime(volume, context.currentTime);
+    snareNoiseGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + decayTime);
+    
+    snareNoise.connect(snareNoiseFilter);
+    snareNoiseFilter.connect(snareNoiseGain);
+    snareNoiseGain.connect(masterGain);
+    
+    snareNoise.start(context.currentTime);
+    snareNoise.stop(context.currentTime + decayTime);
+  };
+  
+  // Helper function to create hi-hat sound
+  const playHiHat = (context: AudioContext, masterGain: GainNode, volume: number = 0.4, open: boolean = false, style: string) => {
+    const bufferSize = context.sampleRate * (open ? 0.2 : 0.1);
+    const noiseBuffer = context.createBuffer(1, bufferSize, context.sampleRate);
+    const output = noiseBuffer.getChannelData(0);
+    
+    // Create noise sample
+    for (let i = 0; i < bufferSize; i++) {
+      output[i] = Math.random() * 2 - 1;
+    }
+    
+    const hatNode = context.createBufferSource();
+    hatNode.buffer = noiseBuffer;
+    
+    const hatGain = context.createGain();
+    const hatFilter = context.createBiquadFilter();
+    
+    // Style-specific hi-hat tuning
+    hatFilter.type = "highpass";
+    if (style === "Rock") {
+      hatFilter.frequency.value = 9000;
+      hatFilter.Q.value = 1.5;
+    } else if (style === "Jazz") {
+      hatFilter.frequency.value = 7000;
+      hatFilter.Q.value = 0.8;
+    } else if (style === "Funk") {
+      hatFilter.frequency.value = 8500;
+      hatFilter.Q.value = 2;
+    } else {
+      hatFilter.frequency.value = 8000;
+      hatFilter.Q.value = 1;
+    }
+    
+    // Style-specific envelope
+    const decayTime = style === "Jazz" ? (open ? 0.5 : 0.12) : (open ? 0.4 : 0.08);
+    
+    hatGain.gain.setValueAtTime(volume, context.currentTime);
+    hatGain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + decayTime);
+    
+    hatNode.connect(hatFilter);
+    hatFilter.connect(hatGain);
+    hatGain.connect(masterGain);
+    
+    hatNode.start(context.currentTime);
+  };
+  
+  // Helper function to create conga sound
+  const playConga = (context: AudioContext, masterGain: GainNode, volume: number = 0.5, style: string) => {
+    const congaOsc = context.createOscillator();
+    const congaGain = context.createGain();
+    
+    // Style-specific conga tuning
+    if (style === "Latin") {
+      congaOsc.frequency.value = 240;
+    } else {
+      congaOsc.frequency.value = 220;
+    }
+    
+    congaOsc.type = "sine";
+    
+    // Style-specific envelope
+    const decayTime = style === "Latin" ? 0.3 : 0.2;
+    
+    congaGain.gain.setValueAtTime(volume, context.currentTime);
+    congaGain.gain.exponentialRampToValueAtTime(0.01, context.currentTime + decayTime);
+    
+    congaOsc.connect(congaGain);
+    congaGain.connect(masterGain);
+    
+    congaOsc.start(context.currentTime);
+    congaOsc.stop(context.currentTime + decayTime);
+  };
+
+  // Start/stop recording
+  const toggleRecording = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+  
+  // Start recording
+  const startRecording = () => {
+    if (!audioDestinationRef.current) {
+      initAudioContext(); // Initialize audio context if not already done
+    }
+    
+    if (audioDestinationRef.current) {
+      const recordedChunks: Blob[] = [];
+      
+      try {
+        const mediaRecorder = new MediaRecorder(audioDestinationRef.current.stream);
+        mediaRecorderRef.current = mediaRecorder;
+        
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            recordedChunks.push(event.data);
+          }
+        };
+        
+        mediaRecorder.onstop = () => {
+          setRecordedChunks(recordedChunks);
+          setRecordingAvailable(true);
+          toast({
+            title: "Recording Complete",
+            description: "Your chord progression recording is ready to download",
+          });
+        };
+        
+        mediaRecorder.start();
+        setIsRecording(true);
+        
+        // Start playing if not already
+        if (!playing) {
+          startPlayback();
+        }
+        
+        toast({
+          title: "Recording Started",
+          description: "The chord progression is now being recorded",
+        });
+      } catch (err) {
+        console.error("Error starting recording:", err);
+        toast({
+          title: "Recording Failed",
+          description: "Could not start recording. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+  
+  // Stop recording
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+  
+  // Download recorded audio
+  const downloadRecording = () => {
+    if (recordedChunks.length === 0) return;
+    
+    const blob = new Blob(recordedChunks, { type: 'audio/mp3' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    document.body.appendChild(a);
+    a.style.display = 'none';
+    a.href = url;
+    a.download = `chord-progression-${style}-${bpm}bpm.mp3`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Download Started",
+      description: `Chord progression has been downloaded as MP3`,
+    });
+  };
+
+  // Start/stop playback
+  const togglePlayback = () => {
+    if (playing) {
+      stopPlayback();
+    } else {
+      startPlayback();
+    }
+  };
+
+  // Start playing the chord progression
+  const startPlayback = () => {
+    initAudioContext();
+    setPlaying(true);
+    setCurrentSection(0);
+    setCurrentChord(0);
+    
+    // Calculate interval between chord changes based on BPM
+    const msPerBeat = 60000 / bpm;
+    const msPerChord = msPerBeat * 4; // 4 beats per chord
+    
+    // Play the first chord immediately
+    if (sections.length > 0 && sections[0].chords.length > 0) {
+      playChord(sections[0].chords[0], 0);
+    }
+    
+    // Set up interval to play subsequent chords
+    intervalRef.current = window.setInterval(() => {
+      setCurrentChord((prev) => {
+        const nextChord = prev + 1;
+        const currentSectionChords = sections[currentSection].chords.length;
+        
+        // If we've reached the end of the current section
+        if (nextChord >= currentSectionChords) {
+          // Check if the section should be repeated
+          const currentRepeat = sections[currentSection].repeat || 1;
+          const sectionPlayCount = Math.floor((currentSection + 1) / sections.length);
+          const shouldRepeatSection = sectionPlayCount < currentRepeat - 1;
+          
+          if (shouldRepeatSection) {
+            // Repeat the section from the first chord
+            if (sections[currentSection].chords.length > 0) {
+              playChord(sections[currentSection].chords[0], currentSection);
+            }
+            return 0;
+          }
+          
+          setCurrentSection((prevSection) => {
+            const nextSection = prevSection + 1;
+            
+            // If we've played through all sections, loop back to the first
+            if (nextSection >= sections.length) {
+              // Play first chord of first section
+              if (sections.length > 0 && sections[0].chords.length > 0) {
+                playChord(sections[0].chords[0], 0);
+              }
+              return 0;
+            } else {
+              // Play first chord of next section
+              if (sections[nextSection].chords.length > 0) {
+                playChord(sections[nextSection].chords[0], nextSection);
+              }
+              return nextSection;
+            }
+          });
+          return 0;
+        } else {
+          // Play next chord in current section
+          playChord(sections[currentSection].chords[nextChord], currentSection);
+          return nextChord;
+        }
+      });
+    }, msPerChord);
+  };
+
+  // Stop playback
+  const stopPlayback = () => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setPlaying(false);
+    
+    // Also stop recording if it's ongoing
+    if (isRecording) {
+      stopRecording();
+    }
+  };
+
+  // Update chord in a section
+  const updateChord = (sectionIndex: number, chordIndex: number, newChord: ChordInProgression) => {
+    setSections((prevSections) => {
+      const updatedSections = [...prevSections];
+      const updatedChords = [...updatedSections[sectionIndex].chords];
+      updatedChords[chordIndex] = newChord;
+      updatedSections[sectionIndex] = {
+        ...updatedSections[sectionIndex],
+        chords: updatedChords,
+      };
+      return updatedSections;
+    });
+  };
+
+  // Add a chord to a section
+  const addChordToSection = (sectionIndex: number) => {
+    // Get the last chord of the section to use as a template for the new one
+    const section = sections[sectionIndex];
+    const lastChord = section.chords[section.chords.length - 1];
+    const newChord = { ...lastChord }; // Clone the last chord
+    
+    setSections((prevSections) => {
+      const updatedSections = [...prevSections];
+      updatedSections[sectionIndex] = {
+        ...updatedSections[sectionIndex],
+        chords: [...updatedSections[sectionIndex].chords, newChord]
+      };
+      return updatedSections;
+    });
+    
+    toast({
+      title: "Chord added",
+      description: "A new chord has been added to your section.",
+    });
+  };
+
+  // Update section repeat count
+  const updateSectionRepeat = (sectionIndex: number, repeatCount: number) => {
+    setSections((prevSections) => {
+      const updatedSections = [...prevSections];
+      updatedSections[sectionIndex] = {
+        ...updatedSections[sectionIndex],
+        repeat: repeatCount
+      };
+      return updatedSections;
+    });
+  };
+
+  // Add a new section
+  const addSection = () => {
+    // Default to adding the same progression as the last section, or a basic progression if none exists
+    const newSectionChords = sections.length > 0 
+      ? [...sections[sections.length - 1].chords]
+      : [
+          { root: "C", type: "major" },
+          { root: "G", type: "major" },
+          { root: "A", type: "minor" },
+          { root: "F", type: "major" },
+        ];
+    
+    // Create a new section that will be musically complementary to the last section
+    let newSectionData: ChordSectionData;
+    
+    if (style === "Jazz") {
+      // For Jazz, try a ii-V-I progression
+      newSectionData = {
+        id: `section-${sections.length + 1}`,
+        chords: [
+          { root: "D", type: "min7" },
+          { root: "G", type: "7" },
+          { root: "C", type: "maj7" },
+          { root: "C", type: "maj7" },
+        ],
+        instruments: ["piano", "bass", "drums"],
+        repeat: 1
+      };
+    } else if (style === "Blues") {
+      // For Blues, a I-IV-V progression
+      newSectionData = {
+        id: `section-${sections.length + 1}`,
+        chords: [
+          { root: "C", type: "7" },
+          { root: "F", type: "7" },
+          { root: "G", type: "7" },
+          { root: "C", type: "7" },
+        ],
+        instruments: ["guitar", "bass", "drums"],
+        repeat: 1
+      };
+    } else {
+      // Default to a standard section
+      newSectionData = {
+        id: `section-${sections.length + 1}`,
+        chords: newSectionChords,
+        instruments: sections.length > 0 ? [...(sections[sections.length - 1].instruments || [])] : ["piano", "guitar", "bass"],
+        repeat: 1
+      };
+    }
+    
+    setSections((prevSections) => [...prevSections, newSectionData]);
+    
+    toast({
+      title: "Section added",
+      description: `Added a new ${style}-style section to your progression.`,
+    });
+  };
+
+  // Remove a section
+  const removeSection = (sectionIndex: number) => {
+    // Don't remove if there's only one section left
+    if (sections.length <= 1) {
+      toast({
+        title: "Cannot remove section",
+        description: "You need at least one section in your progression.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setSections((prevSections) => 
+      prevSections.filter((_, index) => index !== sectionIndex)
+    );
+    
+    toast({
+      description: "Section removed from your progression.",
+    });
+  };
+
+  // Generate chord progression based on selected style
+  const generateChords = () => {
+    // Get a progression based on the selected style
+    let progression;
+    let instruments: string[] = ["piano", "guitar", "bass"];
+    
+    switch(style) {
+      case "Pop":
+        progression = commonProgressions['Pop I-V-vi-IV'];
+        instruments = ["acousticPiano", "acousticGuitar", "bass", "drums"];
+        break;
+      case "Jazz":
+        progression = commonProgressions['Jazz ii-V-I'];
+        instruments = ["piano", "electricBass", "saxophone", "drums"];
+        break;
+      case "50s":
+        progression = commonProgressions['50s I-vi-IV-V'];
+        instruments = ["piano", "acousticGuitar", "acousticBass"];
+        break;
+      case "Blues":
+        progression = commonProgressions['Blues I-IV-V'];
+        instruments = ["electricGuitar", "electricBass", "drums"];
+        break;
+      case "Funk":
+        progression = commonProgressions['Funk I-IV-V'];
+        instruments = ["electricGuitar", "electricBass", "drums", "organ"];
+        break;
+      case "Rock":
+        progression = commonProgressions['Rock I-V-VI-IV'];
+        instruments = ["electricGuitar", "electricBass", "drums"];
+        break;
+      case "Latin":
+        progression = commonProgressions['Latin i-bVII-bVI-V'];
+        instruments = ["acousticGuitar", "bass", "drums"];
+        break;
+      case "Soul":
+        progression = commonProgressions['Soul ii-V-I'];
+        instruments = ["electricPiano", "electricBass", "strings", "drums"];
+        break;
+      default:
+        progression = commonProgressions['Pop I-V-vi-IV'];
+        instruments = ["piano", "guitar", "bass"];
+    }
+    
+    // Update active instruments based on the style
+    const newActiveInstruments: Record<string, boolean> = {};
+    Object.keys(activeInstruments).forEach(key => {
+      newActiveInstruments[key] = instruments.includes(key);
+    });
+    
+    setActiveInstruments(newActiveInstruments);
+    
+    // Replace current sections with the generated progression
+    setSections([
+      {
+        id: "section-1",
+        chords: progression,
+        instruments: instruments,
+        repeat: 1
+      }
+    ]);
+    
+    toast({
+      title: `${style} progression generated`,
+      description: "A new chord progression has been created with style-specific instruments.",
+    });
+  };
+
+  // Toggle instrument on/off
+  const toggleInstrument = (instrument: string) => {
+    setActiveInstruments(prev => ({
+      ...prev,
+      [instrument]: !prev[instrument]
+    }));
+  };
+
+  // Update instrument for a specific section
+  const updateSectionInstruments = (sectionIndex: number, instruments: string[]) => {
+    setSections(prev => {
+      const newSections = [...prev];
+      newSections[sectionIndex] = {
+        ...newSections[sectionIndex],
+        instruments
+      };
+      return newSections;
+    });
+  };
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      if (audioContext.current) {
+        audioContext.current.close();
+      }
+    };
+  }, []);
+
+  // Update interval if BPM changes during playback
+  useEffect(() => {
+    if (playing) {
+      stopPlayback();
+      startPlayback();
+    }
+  }, [bpm]);
+
+  return (
+    <div className={`w-full max-w-4xl mx-auto ${className} animate-fade-in`}>
+      {/* Main controls with smooth animation */}
+      <div className="flex flex-wrap gap-2 mb-6">
+        <Button 
+          variant={playing ? "destructive" : "default"}
+          onClick={togglePlayback}
+          className="w-24 transition-all duration-300 hover:scale-105"
+        >
+          <Play className={`mr-1 h-4 w-4 ${playing ? 'animate-pulse' : ''}`} />
+          {playing ? "Stop" : "Play"}
+        </Button>
+
+        <div className="flex items-center border rounded-md px-3 py-1">
+          <Input
+            type="number"
+            min={40}
+            max={240}
+            value={bpm}
+            onChange={(e) => setBpm(parseInt(e.target.value) || 100)}
+            className="w-16 border-none text-center"
+          />
+          <span className="text-sm ml-1">BPM</span>
+        </div>
+
+        <Select value={style} onValueChange={setStyle}>
+          <SelectTrigger className="w-32">
+            <SelectValue placeholder="Style" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Pop">Pop</SelectItem>
+            <SelectItem value="Jazz">Jazz</SelectItem>
+            <SelectItem value="50s">50s</SelectItem>
+            <SelectItem value="Blues">Blues</SelectItem>
+            <SelectItem value="Funk">Funk</SelectItem>
+            <SelectItem value="Rock">Rock</SelectItem>
+            <SelectItem value="Latin">Latin</SelectItem>
+            <SelectItem value="Soul">Soul</SelectItem>
+          </SelectContent>
+        </Select>
+
+        <Button variant="outline" onClick={generateChords} className="transition-all hover:bg-primary/10">
+          Generate chords
+        </Button>
+        
+        <div className="flex items-center gap-2 ml-auto">
+          {/* Recording controls - Fixed the tooltip issue by removing the tooltip prop */}
+          <ToggleGroup type="single" value={isRecording ? "recording" : ""} className="mr-2">
+            <ToggleGroupItem 
+              value="recording"
+              aria-label="Toggle recording"
+              onClick={toggleRecording}
+              className={isRecording ? "bg-red-500 text-white animate-pulse" : ""}
+            >
+              <Mic className="h-4 w-4" />
+            </ToggleGroupItem>
+          </ToggleGroup>
+          
+          <Button 
+            variant="outline" 
+            size="icon" 
+            className="h-8 w-8"
+            onClick={downloadRecording}
+            disabled={!recordingAvailable}
+          >
+            <Download className="h-4 w-4" />
+          </Button>
+
+          {/* Volume slider */}
+          <div className="flex items-center gap-2">
+            <Music className="h-4 w-4" />
+            <Slider
+              min={0}
+              max={100}
+              step={1}
+              value={[volume]}
+              onValueChange={(value) => setVolume(value[0])}
+              className="w-24 transition-all hover:scale-[1.01]"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Instruments accordion */}
+      <Accordion type="single" collapsible className="mb-6">
+        <AccordionItem value="instruments" className="border rounded-md animate-fade-in">
+          <AccordionTrigger className="px-4 py-2">Global Instruments</AccordionTrigger>
+          <AccordionContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 py-2 px-4">
+              <div className="space-y-6">
+                <h4 className="font-medium">Keyboards</h4>
+                <div className="space-y-3">
+                  <InstrumentToggle 
+                    id="piano" 
+                    label="Piano" 
+                    checked={activeInstruments.piano} 
+                    onToggle={() => toggleInstrument("piano")} 
+                  />
+                  <InstrumentToggle 
+                    id="acousticPiano" 
+                    label="Acoustic Piano" 
+                    checked={activeInstruments.acousticPiano} 
+                    onToggle={() => toggleInstrument("acousticPiano")} 
+                  />
+                  <InstrumentToggle 
+                    id="electricPiano" 
+                    label="Electric Piano" 
+                    checked={activeInstruments.electricPiano} 
+                    onToggle={() => toggleInstrument("electricPiano")} 
+                  />
+                  <InstrumentToggle 
+                    id="organ" 
+                    label="Organ" 
+                    checked={activeInstruments.organ} 
+                    onToggle={() => toggleInstrument("organ")} 
+                  />
+                  <InstrumentToggle 
+                    id="synth" 
+                    label="Synth" 
+                    checked={activeInstruments.synth} 
+                    onToggle={() => toggleInstrument("synth")} 
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-6">
+                <h4 className="font-medium">Strings</h4>
+                <div className="space-y-3">
+                  <InstrumentToggle 
+                    id="guitar" 
+                    label="Guitar" 
+                    checked={activeInstruments.guitar} 
+                    onToggle={() => toggleInstrument("guitar")} 
+                  />
+                  <InstrumentToggle 
+                    id="acousticGuitar" 
+                    label="Acoustic Guitar" 
+                    checked={activeInstruments.acousticGuitar} 
+                    onToggle={() => toggleInstrument("acousticGuitar")} 
+                  />
+                  <InstrumentToggle 
+                    id="electricGuitar" 
+                    label="Electric Guitar" 
+                    checked={activeInstruments.electricGuitar} 
+                    onToggle={() => toggleInstrument("electricGuitar")} 
+                  />
+                  <InstrumentToggle 
+                    id="bass" 
+                    label="Bass" 
+                    checked={activeInstruments.bass} 
+                    onToggle={() => toggleInstrument("bass")} 
+                  />
+                  <InstrumentToggle 
+                    id="acousticBass" 
+                    label="Acoustic Bass" 
+                    checked={activeInstruments.acousticBass} 
+                    onToggle={() => toggleInstrument("acousticBass")} 
+                  />
+                  <InstrumentToggle 
+                    id="electricBass" 
+                    label="Electric Bass" 
+                    checked={activeInstruments.electricBass} 
+                    onToggle={() => toggleInstrument("electricBass")} 
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-6">
+                <h4 className="font-medium">Orchestral</h4>
+                <div className="space-y-3">
+                  <InstrumentToggle 
+                    id="strings" 
+                    label="Strings" 
+                    checked={activeInstruments.strings} 
+                    onToggle={() => toggleInstrument("strings")} 
+                  />
+                  <InstrumentToggle 
+                    id="brass" 
+                    label="Brass" 
+                    checked={activeInstruments.brass} 
+                    onToggle={() => toggleInstrument("brass")} 
+                  />
+                  <InstrumentToggle 
+                    id="saxophone" 
+                    label="Saxophone" 
+                    checked={activeInstruments.saxophone} 
+                    onToggle={() => toggleInstrument("saxophone")} 
+                  />
+                  <InstrumentToggle 
+                    id="flute" 
+                    label="Flute" 
+                    checked={activeInstruments.flute} 
+                    onToggle={() => toggleInstrument("flute")} 
+                  />
+                </div>
+              </div>
+              
+              <div className="space-y-6">
+                <h4 className="font-medium">Percussion</h4>
+                <div className="space-y-3">
+                  <InstrumentToggle 
+                    id="drums" 
+                    label="Drums" 
+                    checked={activeInstruments.drums} 
+                    onToggle={() => toggleInstrument("drums")} 
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="px-4 mt-2">
+              <p className="text-sm text-muted-foreground">
+                These are global instruments. You can also set section-specific instruments by clicking the instrument icon in each section.
+              </p>
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* Chord sections */}
+      <Card className="p-4 mb-6 border border-dashed border-muted-foreground/20">
+        <h3 className="text-lg font-medium mb-4">Progression Structure</h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          Each section can have its own instruments and can repeat multiple times. 
+          Sections play in order (1, 2, 3...) and then loop back to the beginning.
+        </p>
+        
+        <div className="space-y-6 mt-6">
+          {sections.map((section, sectionIndex) => (
+            <ChordSection 
+              key={section.id}
+              section={section}
+              sectionIndex={sectionIndex}
+              isPlaying={playing && currentSection === sectionIndex}
+              currentChord={currentChord}
+              updateChord={(chordIndex, newChord) => updateChord(sectionIndex, chordIndex, newChord)}
+              playChord={(chord) => playChord(chord, sectionIndex)}
+              onAddChord={() => addChordToSection(sectionIndex)}
+              onRemoveSection={() => removeSection(sectionIndex)}
+              allInstruments={availableInstruments}
+              updateSectionInstruments={(instruments) => updateSectionInstruments(sectionIndex, instruments)}
+              sectionRepeat={section.repeat || 1}
+              updateSectionRepeat={(repeats) => updateSectionRepeat(sectionIndex, repeats)}
+            />
+          ))}
+        </div>
+      </Card>
+
+      {/* Section controls */}
+      <div className="flex gap-4">
+        <Button variant="outline" onClick={addSection} className="ml-auto transition-all hover:bg-primary/10">
+          <Plus className="mr-2 h-4 w-4" />
+          Add section
+        </Button>
+      </div>
+    </div>
+  );
+};
+
+interface InstrumentToggleProps {
+  id: string;
+  label: string;
+  checked: boolean;
+  onToggle: () => void;
+}
+
+const InstrumentToggle: React.FC<InstrumentToggleProps> = ({ id, label, checked, onToggle }) => {
+  return (
+    <div className="flex items-center justify-between">
+      <Label htmlFor={`${id}-toggle`} className="text-sm font-medium cursor-pointer">{label}</Label>
+      <Switch 
+        id={`${id}-toggle`} 
+        checked={checked} 
+        onCheckedChange={onToggle} 
+        className="transition-all data-[state=checked]:bg-primary"
+      />
+    </div>
+  );
+};
+
+export default ChordProgressionPlayer;
