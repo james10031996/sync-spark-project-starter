@@ -13,7 +13,7 @@ import { ChordBlock } from "@/components/music/ChordBlock";
 import { ChordInProgression, ChordSectionData } from "../types/audio";
 
 // Import utilities
-import { commonProgressions, availableInstruments, getChordTypesForStyle, getStyleVariations } from "../utils/audioUtils";
+import { commonProgressions, availableInstruments, rootNotes } from "../utils/chordData";
 import { playChord } from "../utils/chordPlayer";
 import { playEnhancedDrumSound } from "../utils/drumSounds";
 
@@ -591,7 +591,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
             >
               {playing ? (
                 <>
-                  <Stop className="w-5 h-5" /> Stop
+                  <Square className="w-5 h-5" /> Stop
                 </>
               ) : (
                 <>
@@ -640,7 +640,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
                 >
                   {isPlayingRecording ? (
                     <>
-                      <Stop className="w-5 h-5" /> Stop
+                      <Square className="w-5 h-5" /> Stop
                     </>
                   ) : (
                     <>

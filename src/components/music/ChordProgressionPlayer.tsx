@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Play, Download, Mic, Music, Stop } from "lucide-react";
+import { Plus, Play, Download, Mic, Music, Square } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChordSection } from "./ChordSection";
@@ -13,7 +12,7 @@ import { Slider } from "@/components/ui/slider";
 import { ChordInProgression, ChordSectionData } from "@/features/chord-progression/types/audio";
 
 // Import utilities
-import { commonProgressions, availableInstruments, getChordTypesForStyle, getStyleVariations } from "@/features/chord-progression/utils/audioUtils";
+import { commonProgressions, availableInstruments } from "@/features/chord-progression/utils/audioUtils";
 import { playChord } from "@/features/chord-progression/utils/chordPlayer";
 import { playEnhancedDrumSound } from "@/features/chord-progression/utils/drumSounds";
 
@@ -502,7 +501,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
             >
               {playing ? (
                 <>
-                  <Stop className="w-5 h-5" /> Stop
+                  <Square className="w-5 h-5" /> Stop
                 </>
               ) : (
                 <>
@@ -551,7 +550,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
                 >
                   {isPlayingRecording ? (
                     <>
-                      <Stop className="w-5 h-5" /> Stop
+                      <Square className="w-5 h-5" /> Stop
                     </>
                   ) : (
                     <>
