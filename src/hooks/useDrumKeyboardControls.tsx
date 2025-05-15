@@ -7,8 +7,6 @@ interface DrumKeyboardControlsProps {
   clearPattern: () => void;
   createBasicPattern: () => void;
   adjustBpm: (amount: number) => void;
-  toggleRecording?: () => void;
-  togglePlayRecording?: () => void;
 }
 
 export const useDrumKeyboardControls = ({
@@ -16,9 +14,7 @@ export const useDrumKeyboardControls = ({
   startStop,
   clearPattern,
   createBasicPattern,
-  adjustBpm,
-  toggleRecording,
-  togglePlayRecording
+  adjustBpm
 }: DrumKeyboardControlsProps) => {
   
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
@@ -43,18 +39,8 @@ export const useDrumKeyboardControls = ({
       case 'ArrowDown':
         adjustBpm(-5);
         break;
-      case 'KeyR':
-        if (toggleRecording) {
-          toggleRecording();
-        }
-        break;
-      case 'KeyP':
-        if (togglePlayRecording) {
-          togglePlayRecording();
-        }
-        break;
     }
-  }, [startStop, clearPattern, createBasicPattern, adjustBpm, toggleRecording, togglePlayRecording]);
+  }, [startStop, clearPattern, createBasicPattern, adjustBpm]);
   
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);

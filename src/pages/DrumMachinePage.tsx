@@ -1,226 +1,60 @@
-import React, { useState, useEffect, useRef } from "react";
+
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import DrumMachine from "@/components/music/DrumMachine";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Slider } from "@/components/ui/slider";
 import { toast } from "@/components/ui/use-toast";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { motion } from "framer-motion";
-import { Play, Pause, Download, Mic, Square } from "lucide-react";
 
 const DrumMachinePage: React.FC = () => {
   const [bpm, setBpm] = useState(120);
-  const [showTutorial, setShowTutorial] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
-  const [isPlayingRecording, setIsPlayingRecording] = useState(false);
+  const [patternQuery, setPatternQuery] = useState("");
   const [loadedPattern, setLoadedPattern] = useState("");
+  const [showTutorial, setShowTutorial] = useState(false);
   
-  // References for recording
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  
-  // Initialize audio context
-  const initAudioContext = () => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      audioDestinationRef.current = audioContextRef.current.createMediaStreamDestination();
-    }
-  };
-  
-  // Start recording
-  const startRecording = () => {
-    initAudioContext();
-    
-    if (audioDestinationRef.current) {
-      audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(audioDestinationRef.current.stream);
-      mediaRecorderRef.current = mediaRecorder;
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-      
-      mediaRecorder.onstop = () => {
-        if (audioChunksRef.current.length === 0) {
-          toast({
-            title: "Recording Error",
-            description: "No audio was recorded. Please try again.",
-            variant: "destructive",
-          });
-          return;
-        }
-        
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/mp3' });
-        setRecordedBlob(audioBlob);
-        
-        // Create a new audio element for playback
-        if (audioElementRef.current) {
-          audioElementRef.current.pause();
-        }
-        
-        const audioURL = URL.createObjectURL(audioBlob);
-        const audio = new Audio(audioURL);
-        
-        // Store the audio element reference
-        audioElementRef.current = audio;
-        
-        // Add onended event to reset isPlayingRecording state
-        audio.onended = () => {
-          setIsPlayingRecording(false);
-        };
-        
-        toast({
-          title: "Recording Complete",
-          description: "Your drum beat has been recorded",
-        });
-      };
-      
-      mediaRecorder.start();
-      setIsRecording(true);
-      toast({
-        title: "Recording Started",
-        description: "Recording your drum patterns",
-      });
-    } else {
-      toast({
-        title: "Recording Error",
-        description: "Could not initialize audio recording",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Stop recording
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-  
-  // Toggle recording
-  const toggleRecording = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-  
-  // Play recorded audio
-  const playRecording = () => {
-    if (recordedBlob && audioElementRef.current) {
-      // Reset the current time to start from the beginning
-      audioElementRef.current.currentTime = 0;
-      
-      // Play the recording
-      audioElementRef.current.play()
-        .then(() => {
-          setIsPlayingRecording(true);
-        })
-        .catch((error) => {
-          console.error("Error playing recording:", error);
-          toast({
-            title: "Playback Error",
-            description: "There was an error playing your recording",
-            variant: "destructive",
-          });
-        });
-    } else if (recordedBlob) {
-      // Create a new audio element if it doesn't exist
-      const audioURL = URL.createObjectURL(recordedBlob);
-      const audio = new Audio(audioURL);
-      
-      // Store the audio element reference
-      audioElementRef.current = audio;
-      
-      // Add onended event to reset isPlayingRecording state
-      audio.onended = () => {
-        setIsPlayingRecording(false);
-      };
-      
-      // Play the audio
-      audio.play()
-        .then(() => {
-          setIsPlayingRecording(true);
-        })
-        .catch((error) => {
-          console.error("Error playing recording:", error);
-          toast({
-            title: "Playback Error",
-            description: "There was an error playing your recording",
-            variant: "destructive",
-          });
-        });
-    }
-  };
-  
-  // Stop playing recording
-  const stopPlayingRecording = () => {
-    if (audioElementRef.current) {
-      audioElementRef.current.pause();
-      audioElementRef.current.currentTime = 0;
-      setIsPlayingRecording(false);
-    }
-  };
-  
-  // Toggle play/pause recorded audio
-  const togglePlayRecording = () => {
-    if (isPlayingRecording) {
-      stopPlayingRecording();
-    } else {
-      playRecording();
-    }
-  };
-  
-  // Download recorded audio
-  const downloadRecording = () => {
-    if (recordedBlob) {
-      const url = URL.createObjectURL(recordedBlob);
-      const a = document.createElement('a');
-      a.style.display = 'none';
-      a.href = url;
-      a.download = `drum-beat-${new Date().getTime()}.mp3`;
-      document.body.appendChild(a);
-      a.click();
-      
-      // Clean up
-      setTimeout(() => {
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
-      }, 100);
-      
-      toast({
-        title: "Download Started",
-        description: "Your drum beat is being downloaded",
-      });
-    } else {
-      toast({
-        title: "No Recording",
-        description: "Please record something first",
-        variant: "destructive",
-      });
-    }
-  };
-  
-  // Clean up on unmount
+  // Check URL for pattern data on load
   useEffect(() => {
-    return () => {
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
-      }
-      if (audioElementRef.current) {
-        audioElementRef.current.pause();
-      }
-    };
+    const searchParams = new URLSearchParams(window.location.search);
+    const data = searchParams.get('data');
+    
+    if (data) {
+      setLoadedPattern(data);
+      setPatternQuery(data);
+      toast({
+        title: "Pattern Loaded",
+        description: "Drum pattern was loaded from URL",
+      });
+    }
   }, []);
+  
+  // Function to generate a sharable URL
+  const generateShareURL = () => {
+    const url = new URL(window.location.href.split('?')[0]);
+    url.searchParams.set('data', patternQuery);
+    return url.toString();
+  };
+  
+  // Copy URL to clipboard
+  const copyShareURL = () => {
+    const url = generateShareURL();
+    navigator.clipboard.writeText(url).then(() => {
+      toast({
+        title: "URL Copied",
+        description: "Sharable URL copied to clipboard",
+      });
+    });
+  };
+  
+  // Handle pattern updates from the drum machine
+  const handlePatternChange = (pattern: string) => {
+    setPatternQuery(pattern);
+  };
 
   // Animation variants for page elements
   const fadeIn = {
@@ -288,7 +122,7 @@ const DrumMachinePage: React.FC = () => {
                   <li>Use the "Start" button to play your pattern</li>
                   <li>Adjust the tempo with the BPM slider</li>
                   <li>Try the "Basic Beat" button for a simple pattern to start</li>
-                  <li>Use the recording controls to capture your drum patterns</li>
+                  <li>Share your creation by copying the URL</li>
                 </ol>
               </CardContent>
             </Card>
@@ -302,49 +136,31 @@ const DrumMachinePage: React.FC = () => {
           >
             <DrumMachine 
               initialBpm={bpm} 
+              queryPattern={loadedPattern}
               className="w-full"
-              audioDestination={audioDestinationRef.current}
-              onBpmChange={(newBpm) => setBpm(newBpm)}
+              onPatternChange={handlePatternChange}
             />
             
-            <motion.div variants={fadeIn} className="mt-6">
-              <Card>
+            <motion.div variants={fadeIn}>
+              <Card className="mt-6">
                 <CardContent className="pt-6">
-                  <h3 className="font-medium mb-3">Recording Controls</h3>
-                  <div className="flex flex-wrap gap-3">
+                  <h3 className="font-medium mb-3">Share Your Pattern</h3>
+                  <div className="flex space-x-2">
+                    <Input 
+                      placeholder="Enter pattern query string" 
+                      value={patternQuery}
+                      onChange={(e) => setPatternQuery(e.target.value)}
+                      className="transition-all duration-300 focus:ring-2"
+                    />
                     <Button 
-                      variant={isRecording ? "destructive" : "default"}
-                      onClick={toggleRecording}
-                      className="flex items-center gap-2"
+                      onClick={copyShareURL}
+                      className="transition-all duration-300 hover:scale-105"
                     >
-                      <Mic className={`h-4 w-4 ${isRecording ? "animate-pulse" : ""}`} />
-                      {isRecording ? "Stop Recording" : "Record"}
-                    </Button>
-                    
-                    <Button 
-                      variant="outline"
-                      onClick={togglePlayRecording}
-                      disabled={!recordedBlob}
-                      className="flex items-center gap-2"
-                    >
-                      {isPlayingRecording ? <Stop className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                      {isPlayingRecording ? "Stop Playback" : "Play Recording"}
-                    </Button>
-                    
-                    <Button 
-                      variant="outline"
-                      onClick={downloadRecording}
-                      disabled={!recordedBlob}
-                      className="flex items-center gap-2"
-                    >
-                      <Download className="h-4 w-4" />
-                      Download MP3
+                      Share
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
-                    {recordedBlob 
-                      ? "Recording is ready to play or download" 
-                      : "Record your drum patterns to download them as MP3"}
+                    Pattern automatically updates as you create your beat. Click Share to copy URL.
                   </p>
                 </CardContent>
               </Card>
@@ -356,9 +172,10 @@ const DrumMachinePage: React.FC = () => {
             variants={fadeIn}
           >
             <Tabs defaultValue="about" className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="about" className="transition-all duration-200">About</TabsTrigger>
                 <TabsTrigger value="patterns" className="transition-all duration-200">Patterns</TabsTrigger>
+                <TabsTrigger value="embed" className="transition-all duration-200">Embed</TabsTrigger>
               </TabsList>
               
               <TabsContent value="about" className="mt-4">
@@ -373,7 +190,7 @@ const DrumMachinePage: React.FC = () => {
                       <li>Create patterns by toggling drum pads</li>
                       <li>Adjust tempo with the BPM slider</li>
                       <li>Control volume with the volume slider</li>
-                      <li>Record your patterns and download as MP3</li>
+                      <li>Share your patterns with others via URL</li>
                       <li>Use keyboard shortcuts: Spacebar to play/stop</li>
                     </ul>
                   </CardContent>
@@ -456,6 +273,58 @@ const DrumMachinePage: React.FC = () => {
                   </CardContent>
                 </Card>
               </TabsContent>
+              
+              <TabsContent value="embed" className="mt-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <h2 className="text-xl font-semibold mb-4">Embed This Component</h2>
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      You can easily embed this drum machine into your own project:
+                    </p>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="embed-bpm">Default BPM</Label>
+                        <div className="flex items-center gap-4">
+                          <Slider
+                            id="embed-bpm"
+                            min={60}
+                            max={200}
+                            step={1}
+                            value={[bpm]}
+                            onValueChange={(values) => setBpm(values[0])}
+                            className="flex-1"
+                          />
+                          <span className="w-12 text-right">{bpm}</span>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="embed-pattern">Default Pattern (Optional)</Label>
+                        <Input 
+                          id="embed-pattern" 
+                          placeholder="e.g. kick=1010&snare=0101" 
+                          value={patternQuery}
+                          onChange={(e) => setPatternQuery(e.target.value)}
+                          className="transition-all duration-300"
+                        />
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="embed-code">Embed Code</Label>
+                        <Input 
+                          id="embed-code" 
+                          readOnly 
+                          value={`<DrumMachine initialBpm={${bpm}}${patternQuery ? ` queryPattern="${patternQuery}"` : ''} onPatternChange={(pattern) => console.log('Pattern updated:', pattern)} />`} 
+                          onClick={(e) => (e.target as HTMLInputElement).select()}
+                          className="font-mono text-sm transition-all duration-300"
+                        />
+                        <p className="text-xs text-muted-foreground">Click to select, then copy.</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
             
             <motion.div variants={fadeIn}>
@@ -467,8 +336,6 @@ const DrumMachinePage: React.FC = () => {
                     <li><strong>C:</strong> Clear pattern</li>
                     <li><strong>B:</strong> Create basic beat</li>
                     <li><strong>Arrow Up/Down:</strong> Adjust tempo</li>
-                    <li><strong>R:</strong> Start/Stop recording</li>
-                    <li><strong>P:</strong> Play recorded audio</li>
                   </ul>
                 </CardContent>
               </Card>
@@ -476,17 +343,6 @@ const DrumMachinePage: React.FC = () => {
           </motion.div>
         </div>
       </motion.div>
-      
-      {/* SEO Meta Tags added for better search visibility */}
-      <head>
-        <title>Online Drum Machine - Create and Record Drum Beats | MusicTools.app</title>
-        <meta name="description" content="Create, play and record your own drum beats with our free online drum machine. Features 16-step sequencer, recording functionality, and pre-made patterns." />
-        <meta name="keywords" content="drum machine, beat maker, drum sequencer, online drums, rhythm maker, drum patterns, beat sequencer, music production tool, free drum machine, drum recording app" />
-        <meta property="og:title" content="Online Drum Machine - Create and Record Drum Beats" />
-        <meta property="og:description" content="Create custom drum patterns with our free online 16-step sequencer. Save and download your beats as MP3." />
-        <meta property="og:type" content="website" />
-        <link rel="canonical" href="https://musictools.app/drum-machine" />
-      </head>
     </div>
   );
 };

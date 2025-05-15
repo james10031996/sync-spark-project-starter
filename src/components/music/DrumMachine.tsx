@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -69,8 +68,6 @@ interface DrumMachineProps {
   initialBpm?: number;
   queryPattern?: string;
   onPatternChange?: (pattern: string) => void;
-  audioDestination?: MediaStreamAudioDestinationNode | null;
-  onBpmChange?: (bpm: number) => void;
 }
 
 const DrumMachine: React.FC<DrumMachineProps> = ({
@@ -78,8 +75,6 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
   initialBpm = 120,
   queryPattern = "",
   onPatternChange,
-  audioDestination,
-  onBpmChange,
 }) => {
   // Get pattern from query if provided, otherwise use empty pattern
   const initialPattern = queryPattern 
@@ -91,7 +86,6 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
   const [currentStep, setCurrentStep] = useState(-1);
   const [bpm, setBpm] = useState(initialBpm);
   const [volume, setVolume] = useState(0.6);
-  const [loadedPattern, setLoadedPattern] = useState("");
   
   const audioContext = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
@@ -300,17 +294,10 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     source.connect(gainNode);
     gainNode.connect(compressor);
     compressor.connect(panner);
-    
-    // Connect to main output
     panner.connect(audioContext.current.destination);
     
-    // Connect to recording destination if provided
-    if (audioDestination) {
-      panner.connect(audioDestination);
-    }
-    
     source.start();
-  }, [volume, audioDestination]);
+  }, [volume]);
   
   // Toggle a step in the pattern
   const toggleStep = useCallback((soundIndex: number, stepIndex: number) => {
@@ -422,23 +409,8 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
   
   // Adjust BPM by a certain amount
   const adjustBpm = useCallback((amount: number) => {
-    setBpm(prev => {
-      const newBpm = Math.min(Math.max(prev + amount, 60), 200);
-      if (onBpmChange) {
-        onBpmChange(newBpm);
-      }
-      return newBpm;
-    });
-  }, [onBpmChange]);
-  
-  // Handle direct BPM change
-  const handleBpmChange = useCallback((value: number[]) => {
-    const newBpm = value[0];
-    setBpm(newBpm);
-    if (onBpmChange) {
-      onBpmChange(newBpm);
-    }
-  }, [onBpmChange]);
+    setBpm(prev => Math.min(Math.max(prev + amount, 60), 200));
+  }, []);
   
   // Update interval when BPM changes
   useEffect(() => {
@@ -463,13 +435,6 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
       setPattern(parsePatternFromQuery(queryPattern));
     }
   }, [queryPattern]);
-  
-  // Update pattern when loadedPattern state changes
-  useEffect(() => {
-    if (loadedPattern) {
-      setPattern(parsePatternFromQuery(loadedPattern));
-    }
-  }, [loadedPattern]);
   
   // Generate pattern string when pattern changes
   useEffect(() => {
@@ -581,7 +546,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
               max={200}
               step={1}
               value={[bpm]}
-              onValueChange={handleBpmChange}
+              onValueChange={(values) => setBpm(values[0])}
               className="transition-all duration-200"
             />
           </div>
