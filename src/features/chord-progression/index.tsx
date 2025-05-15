@@ -1,7 +1,7 @@
 
 import React from 'react';
-import ChordProgressionPage from './ChordProgressionPage';
-import { ChordInProgression, ChordSectionData } from './types/audio';
+import ChordProgressionPlayer from './components/ChordProgressionPlayer';
 
-export { ChordInProgression, ChordSectionData };
-export default ChordProgressionPage;
+// Re-export types properly
+export type { ChordInProgression, ChordSectionData } from './types/audio';
+export default ChordProgressionPlayer;

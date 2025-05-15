@@ -72,7 +72,7 @@ interface DrumMachineProps {
   onBpmChange?: (bpm: number) => void;
 }
 
-// Changed from const DrumMachine: React.FC to export const DrumMachine: React.FC
+// Use named export format
 export const DrumMachine: React.FC<DrumMachineProps> = ({
   className = "",
   initialBpm = 120,

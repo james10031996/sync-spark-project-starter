@@ -4,7 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ChordBlock } from "@/components/music/ChordBlock";
 import { Plus, Trash, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ChordInProgression, ChordSectionData } from '../types';
+import { ChordInProgression, ChordSectionData } from '../types/audio';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 

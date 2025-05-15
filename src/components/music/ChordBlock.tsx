@@ -1,7 +1,5 @@
-
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChordInProgression } from "@/components/music/ChordProgressionPlayer";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -9,6 +7,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { ChordInProgression } from "@/features/chord-progression/types/audio";
 
 // Define root notes and chord types
 const rootNotes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
