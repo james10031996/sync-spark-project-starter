@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -77,6 +76,7 @@ export interface ChordInProgression {
 export interface ChordSectionData {
   id: string;
   chords: ChordInProgression[];
+  instruments?: string[]; // Add instruments property as optional
 }
 
 interface ChordProgressionPlayerProps {
