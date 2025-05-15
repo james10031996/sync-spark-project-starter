@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import DrumMachine from "@/components/music/DrumMachine";
 import { motion } from "framer-motion";
-import { Square } from "lucide-react"; // Replace Stop with Square
+import { Square } from "lucide-react"; // Use Square instead of Stop
 
 const DrumMachinePage: React.FC = () => {
   return (

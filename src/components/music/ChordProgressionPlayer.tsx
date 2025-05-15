@@ -1,8 +1,9 @@
+
 import React, { useState, useEffect, useRef } from "react";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Music } from "lucide-react";
+import { Play, Music, Plus } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -1070,62 +1071,100 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     });
   };
 
-  // Generate chord progression based on selected style
-  const generateChords = () => {
-    // Get a progression based on the selected style
-    let progression;
-    let instruments: string[] = ["piano", "guitar", "bass"];
+  // Add a new section
+  const addSection = () => {
+    const newSectionId = `section-${sections.length + 1}`;
+    const newSection: ChordSectionData = {
+      id: newSectionId,
+      chords: [
+        { root: "C", type: "major" },
+        { root: "G", type: "major" },
+        { root: "A", type: "minor" },
+        { root: "F", type: "major" },
+      ],
+      instruments: ["piano", "guitar", "bass"]
+    };
     
-    switch(style) {
-      case "Pop":
-        progression = commonProgressions['Pop I-V-vi-IV'];
-        instruments = ["piano", "guitar", "bass"];
-        break;
-      case "Jazz":
-        progression = commonProgressions['Jazz ii-V-I'];
-        instruments = ["piano", "bass", "saxophone"];
-        break;
-      case "50s":
-        progression = commonProgressions['50s I-vi-IV-V'];
-        instruments = ["piano", "guitar", "bass"];
-        break;
-      case "Blues":
-        progression = commonProgressions['Blues I-IV-V'];
-        instruments = ["guitar", "bass", "drums"];
-        break;
-      case "Funk":
-        progression = commonProgressions['Funk I-IV-V'];
-        instruments = ["guitar", "bass", "drums", "organ"];
-        break;
-      case "Rock":
-        progression = commonProgressions['Rock I-V-VI-IV'];
-        instruments = ["guitar", "bass", "drums"];
-        break;
-      case "Latin":
-        progression = commonProgressions['Latin i-bVII-bVI-V'];
-        instruments = ["guitar", "bass", "drums"];
-        break;
-      case "Soul":
-        progression = commonProgressions['Soul ii-V-I'];
-        instruments = ["piano", "bass", "strings", "drums"];
-        break;
-      default:
-        progression = commonProgressions['Pop I-V-vi-IV'];
-        instruments = ["piano", "guitar", "bass"];
-    }
+    setSections((prevSections) => [...prevSections, newSection]);
     
-    // Replace current sections with the generated progression
-    setSections([
-      {
-        id: "section-1",
-        chords: progression,
-        instruments: instruments
+    toast({
+      title: "Section added",
+      description: "A new chord section has been added to your progression.",
+    });
+  };
+
+  // Remove a section
+  const removeSection = (sectionIndex: number) => {
+    setSections((prevSections) => {
+      // Don't remove if it's the last section
+      if (prevSections.length <= 1) {
+        toast({
+          title: "Cannot remove section",
+          description: "You need at least one section in your progression.",
+          variant: "destructive"
+        });
+        return prevSections;
       }
-    ]);
+      
+      const updatedSections = [...prevSections];
+      updatedSections.splice(sectionIndex, 1);
+      
+      toast({
+        title: "Section removed",
+        description: "The chord section has been removed from your progression.",
+      });
+      
+      return updatedSections;
+    });
+  };
+
+  // Generate random chord progression based on selected style for each section
+  const generateChords = () => {
+    setSections(prevSections => {
+      return prevSections.map(section => {
+        // Generate a random chord progression
+        const randomChords: ChordInProgression[] = Array(4).fill(0).map(() => ({
+          root: rootNotes[Math.floor(Math.random() * rootNotes.length)],
+          type: chordTypes[Math.floor(Math.random() * chordTypes.length)].id
+        }));
+
+        let instruments: string[] = ["piano", "guitar", "bass"];
+        
+        // Set style-specific instruments
+        switch(style) {
+          case "Jazz":
+            instruments = ["piano", "bass", "saxophone"];
+            break;
+          case "Blues":
+            instruments = ["guitar", "bass", "drums"];
+            break;
+          case "Funk":
+            instruments = ["guitar", "bass", "drums", "organ"];
+            break;
+          case "Rock":
+            instruments = ["guitar", "bass", "drums"];
+            break;
+          case "Latin":
+            instruments = ["guitar", "bass", "drums"];
+            break;
+          case "Soul":
+            instruments = ["piano", "bass", "strings", "drums"];
+            break;
+          default:
+            instruments = ["piano", "guitar", "bass"];
+        }
+
+        return {
+          ...section,
+          chords: randomChords,
+          instruments: instruments
+        };
+      });
+    });
     
     toast({
       title: `${style} progression generated`,
-      description: "A new chord progression has been created with style-specific instruments.",
+      description: "Random chord progressions have been created for all sections.",
     });
   };
 
@@ -1217,168 +1256,208 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         </div>
       </div>
 
-      {/* Main content with tabs */}
+      {/* Main content */}
       <Card className="p-4 mb-6">
-        <Tabs defaultValue="play" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="mb-4">
-            <TabsTrigger value="play">Play</TabsTrigger>
-            <TabsTrigger value="about">About</TabsTrigger>
-            <TabsTrigger value="howto">How to Play</TabsTrigger>
-            <TabsTrigger value="tutorial">Tutorial</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="play" className="space-y-4">
-            {/* Chords display */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-              {sections[0].chords.map((chord, index) => (
-                <div 
-                  key={index} 
-                  className={`p-3 rounded-md border text-center transition-all ${
-                    playing && currentSection === 0 && currentChord === index 
-                      ? 'bg-primary/20 border-primary scale-105' 
-                      : 'bg-card border-border'
-                  }`}
-                  onClick={() => playChord(chord, 0)}
-                >
-                  <div className="text-lg font-semibold">
-                    {chord.root}{chordTypes.find(ct => ct.id === chord.type)?.symbol || ''}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {chordTypes.find(ct => ct.id === chord.type)?.name || ''}
+        <CardContent className="space-y-8 pt-2">
+          {/* Chord Sections */}
+          <div className="space-y-6">
+            {sections.map((section, sectionIndex) => (
+              <div key={section.id} className="border rounded-lg p-4 bg-card/50">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-lg font-medium">Section {sectionIndex + 1}</h3>
+                  <div className="flex gap-2">
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      onClick={() => addChordToSection(sectionIndex)}
+                    >
+                      <Plus className="h-4 w-4 mr-1" /> Add Chord
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline" 
+                      className="text-destructive hover:bg-destructive/10" 
+                      onClick={() => removeSection(sectionIndex)}
+                    >
+                      Remove
+                    </Button>
                   </div>
                 </div>
-              ))}
-            </div>
-            
-            {/* Instruments */}
-            <div className="mt-6">
-              <h3 className="text-sm font-medium mb-3">Active Instruments</h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2">
-                {Object.entries(activeInstruments)
-                  .filter(([id, active]) => sections[0].instruments?.includes(id) || active)
-                  .map(([id, active]) => (
-                    <div key={id} className="flex items-center justify-between">
-                      <Label htmlFor={`${id}-toggle`} className="text-sm font-medium cursor-pointer">{availableInstruments[id]?.name}</Label>
-                      <Switch 
-                        id={`${id}-toggle`} 
-                        checked={active} 
-                        onCheckedChange={() => toggleInstrument(id)} 
-                        className="transition-all data-[state=checked]:bg-primary"
-                      />
+
+                {/* Chords display */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {section.chords.map((chord, chordIndex) => (
+                    <div 
+                      key={chordIndex} 
+                      className={`p-3 rounded-md border text-center transition-all ${
+                        playing && currentSection === sectionIndex && currentChord === chordIndex 
+                          ? 'bg-primary/20 border-primary scale-105' 
+                          : 'bg-card border-border'
+                      }`}
+                      onClick={() => playChord(chord, sectionIndex)}
+                    >
+                      <div className="text-lg font-semibold">
+                        {chord.root}{chordTypes.find(ct => ct.id === chord.type)?.symbol || ''}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {chordTypes.find(ct => ct.id === chord.type)?.name || ''}
+                      </div>
                     </div>
-                  ))
-                }
+                  ))}
+                </div>
               </div>
+            ))}
+            
+            <Button 
+              variant="outline" 
+              className="w-full border-dashed" 
+              onClick={addSection}
+            >
+              <Plus className="h-4 w-4 mr-1" /> Add Section
+            </Button>
+          </div>
+          
+          {/* Instruments */}
+          <div>
+            <h3 className="text-sm font-medium mb-3">Active Instruments</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2">
+              {Object.entries(activeInstruments)
+                .filter(([id, active]) => {
+                  // Show instrument if it's active or if it's used in any section
+                  return active || sections.some(section => section.instruments?.includes(id));
+                })
+                .map(([id, active]) => (
+                  <div key={id} className="flex items-center justify-between">
+                    <Label htmlFor={`${id}-toggle`} className="text-sm font-medium cursor-pointer">{availableInstruments[id]?.name}</Label>
+                    <Switch 
+                      id={`${id}-toggle`} 
+                      checked={active} 
+                      onCheckedChange={() => toggleInstrument(id)} 
+                      className="transition-all data-[state=checked]:bg-primary"
+                    />
+                  </div>
+                ))
+              }
             </div>
-          </TabsContent>
+          </div>
+        </CardContent>
 
-          <TabsContent value="about">
-            <div className="prose dark:prose-invert">
-              <h3>About Chord Progression Player</h3>
-              <p>
-                The Chord Progression Player is a tool designed to help musicians, songwriters, and music enthusiasts experiment with different chord progressions and musical styles.
-              </p>
-              <p>
-                This interactive tool allows you to:
-              </p>
-              <ul className="pl-6 list-disc space-y-1">
-                <li>Play common chord progressions across various musical genres</li>
-                <li>Choose from different musical styles such as Pop, Jazz, Rock, Blues, and more</li>
-                <li>Customize the instrumentation to hear how progressions sound with different instruments</li>
-                <li>Adjust the tempo (BPM) to match your preferred playing speed</li>
-                <li>Generate style-specific chord progressions with appropriate instrumentation</li>
-              </ul>
-              <p>
-                Whether you're looking for inspiration for your next song, learning about music theory, or just having fun exploring different sounds, the Chord Progression Player provides an intuitive interface to experiment with harmonic ideas.
-              </p>
-            </div>
-          </TabsContent>
+        <CardFooter className="flex flex-col pt-6 px-0">
+          <Tabs className="w-full" defaultValue="about" value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full mb-4 grid grid-cols-3">
+              <TabsTrigger value="about">About</TabsTrigger>
+              <TabsTrigger value="howto">How to Play</TabsTrigger>
+              <TabsTrigger value="tutorial">Tutorial</TabsTrigger>
+            </TabsList>
 
-          <TabsContent value="howto">
-            <div className="prose dark:prose-invert">
-              <h3>How to Play</h3>
-              
-              <div className="mb-4">
-                <h4>Getting Started</h4>
-                <ol className="pl-6 list-decimal space-y-1">
-                  <li>Choose a musical style using the Style dropdown</li>
-                  <li>Click "Generate chords" to create a progression suited to that style</li>
-                  <li>Press the Play button to hear your progression</li>
-                  <li>Adjust the BPM slider to speed up or slow down the playback</li>
-                </ol>
-              </div>
-              
-              <div className="mb-4">
-                <h4>Customizing Your Sound</h4>
-                <ul className="pl-6 list-disc space-y-1">
-                  <li>Toggle instruments on or off using the switches in the Active Instruments section</li>
-                  <li>Click on any chord box to hear that individual chord</li>
-                  <li>Adjust the volume using the slider in the top controls</li>
-                </ul>
-              </div>
-              
-              <div>
-                <h4>Tips for Better Results</h4>
-                <ul className="pl-6 list-disc space-y-1">
-                  <li>Different styles use different instrumental combinations - experiment with them</li>
-                  <li>Jazz progressions tend to use more complex chord types (7th, maj7, min7)</li>
-                  <li>Rock and Pop styles often work well with simpler major and minor chords</li>
-                  <li>Try the same progression at different tempos to change the feel</li>
-                </ul>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="tutorial">
-            <div className="prose dark:prose-invert">
-              <h3>Chord Progression Tutorial</h3>
-              
-              <div className="mb-4">
-                <h4>Basics of Chord Progressions</h4>
+            <TabsContent value="about">
+              <div className="prose dark:prose-invert">
+                <h3>About Chord Progression Player</h3>
                 <p>
-                  A chord progression is a sequence of chords played in a specific order. In Western music, chord progressions provide the harmonic foundation for melodies and are often what gives a song its distinctive feel.
+                  The Chord Progression Player is a tool designed to help musicians, songwriters, and music enthusiasts experiment with different chord progressions and musical styles.
                 </p>
-              </div>
-              
-              <div className="mb-4">
-                <h4>Common Progressions</h4>
-                <ul className="pl-6 space-y-2">
-                  <li>
-                    <strong>I-IV-V (1-4-5):</strong> The foundation of blues and rock music. In C major, this would be C-F-G.
-                  </li>
-                  <li>
-                    <strong>I-V-vi-IV (1-5-6-4):</strong> Extremely common in pop music. In C major: C-G-Am-F.
-                  </li>
-                  <li>
-                    <strong>ii-V-I (2-5-1):</strong> The backbone of jazz. In C major: Dm7-G7-Cmaj7.
-                  </li>
-                  <li>
-                    <strong>I-vi-IV-V (1-6-4-5):</strong> Classic 50s progression. In C major: C-Am-F-G.
-                  </li>
-                </ul>
-              </div>
-              
-              <div className="mb-4">
-                <h4>Understanding Roman Numerals</h4>
                 <p>
-                  In music theory, Roman numerals indicate the position of a chord within a scale:
+                  This interactive tool allows you to:
                 </p>
                 <ul className="pl-6 list-disc space-y-1">
-                  <li>Uppercase (I, IV, V) represents major chords</li>
-                  <li>Lowercase (ii, iii, vi) represents minor chords</li>
-                  <li>Numbers relate to the scale degree (I = 1st note of scale, etc.)</li>
+                  <li>Play common chord progressions across various musical genres</li>
+                  <li>Choose from different musical styles such as Pop, Jazz, Rock, Blues, and more</li>
+                  <li>Customize the instrumentation to hear how progressions sound with different instruments</li>
+                  <li>Adjust the tempo (BPM) to match your preferred playing speed</li>
+                  <li>Generate style-specific chord progressions with appropriate instrumentation</li>
                 </ul>
-              </div>
-              
-              <div>
-                <h4>Experiment with the Player</h4>
                 <p>
-                  Use this chord progression player to experiment with different progressions across musical styles. Listen to how changing instruments or tempo affects the feel of the same chord sequence. Try generating progressions in different styles to hear how they differ harmonically.
+                  Whether you're looking for inspiration for your next song, learning about music theory, or just having fun exploring different sounds, the Chord Progression Player provides an intuitive interface to experiment with harmonic ideas.
                 </p>
               </div>
-            </div>
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+
+            <TabsContent value="howto">
+              <div className="prose dark:prose-invert">
+                <h3>How to Play</h3>
+                
+                <div className="mb-4">
+                  <h4>Getting Started</h4>
+                  <ol className="pl-6 list-decimal space-y-1">
+                    <li>Choose a musical style using the Style dropdown</li>
+                    <li>Click "Generate chords" to create a progression suited to that style</li>
+                    <li>Press the Play button to hear your progression</li>
+                    <li>Adjust the BPM slider to speed up or slow down the playback</li>
+                  </ol>
+                </div>
+                
+                <div className="mb-4">
+                  <h4>Customizing Your Sound</h4>
+                  <ul className="pl-6 list-disc space-y-1">
+                    <li>Toggle instruments on or off using the switches in the Active Instruments section</li>
+                    <li>Click on any chord box to hear that individual chord</li>
+                    <li>Adjust the volume using the slider in the top controls</li>
+                  </ul>
+                </div>
+                
+                <div>
+                  <h4>Tips for Better Results</h4>
+                  <ul className="pl-6 list-disc space-y-1">
+                    <li>Different styles use different instrumental combinations - experiment with them</li>
+                    <li>Jazz progressions tend to use more complex chord types (7th, maj7, min7)</li>
+                    <li>Rock and Pop styles often work well with simpler major and minor chords</li>
+                    <li>Try the same progression at different tempos to change the feel</li>
+                  </ul>
+                </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="tutorial">
+              <div className="prose dark:prose-invert">
+                <h3>Chord Progression Tutorial</h3>
+                
+                <div className="mb-4">
+                  <h4>Basics of Chord Progressions</h4>
+                  <p>
+                    A chord progression is a sequence of chords played in a specific order. In Western music, chord progressions provide the harmonic foundation for melodies and are often what gives a song its distinctive feel.
+                  </p>
+                </div>
+                
+                <div className="mb-4">
+                  <h4>Common Progressions</h4>
+                  <ul className="pl-6 space-y-2">
+                    <li>
+                      <strong>I-IV-V (1-4-5):</strong> The foundation of blues and rock music. In C major, this would be C-F-G.
+                    </li>
+                    <li>
+                      <strong>I-V-vi-IV (1-5-6-4):</strong> Extremely common in pop music. In C major: C-G-Am-F.
+                    </li>
+                    <li>
+                      <strong>ii-V-I (2-5-1):</strong> The backbone of jazz. In C major: Dm7-G7-Cmaj7.
+                    </li>
+                    <li>
+                      <strong>I-vi-IV-V (1-6-4-5):</strong> Classic 50s progression. In C major: C-Am-F-G.
+                    </li>
+                  </ul>
+                </div>
+                
+                <div className="mb-4">
+                  <h4>Understanding Roman Numerals</h4>
+                  <p>
+                    In music theory, Roman numerals indicate the position of a chord within a scale:
+                  </p>
+                  <ul className="pl-6 list-disc space-y-1">
+                    <li>Uppercase (I, IV, V) represents major chords</li>
+                    <li>Lowercase (ii, iii, vi) represents minor chords</li>
+                    <li>Numbers relate to the scale degree (I = 1st note of scale, etc.)</li>
+                  </ul>
+                </div>
+                
+                <div>
+                  <h4>Experiment with the Player</h4>
+                  <p>
+                    Use this chord progression player to experiment with different progressions across musical styles. Listen to how changing instruments or tempo affects the feel of the same chord sequence. Try generating progressions in different styles to hear how they differ harmonically.
+                  </p>
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
+        </CardFooter>
       </Card>
     </div>
   );
