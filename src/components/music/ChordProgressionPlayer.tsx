@@ -2,15 +2,13 @@ import React, { useState, useEffect, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Plus, Download, Mic, Music } from "lucide-react";
+import { Play, Music } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ChordSection } from "@/components/music/ChordSection";
 import { toast } from "@/hooks/use-toast";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Slider } from "@/components/ui/slider";
 
 // Define chord types for the progression player
@@ -113,7 +111,6 @@ export interface ChordSectionData {
   id: string;
   chords: ChordInProgression[];
   instruments?: string[]; // Section-level instruments
-  repeat?: number; // How many times to repeat this section
 }
 
 interface ChordProgressionPlayerProps {
@@ -137,7 +134,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         { root: "F", type: "major" },
       ],
       instruments: ["piano", "guitar", "bass"],
-      repeat: 1
     },
   ]);
   const [playing, setPlaying] = useState(false);
@@ -164,27 +160,16 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     flute: false
   });
   const [volume, setVolume] = useState<number>(80);
+  const [activeTab, setActiveTab] = useState("play");
   
-  // Recording state
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordedChunks, setRecordedChunks] = useState<Blob[]>([]);
-  const [recordingAvailable, setRecordingAvailable] = useState(false);
-
   // Audio context and timer references
   const audioContext = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioDestinationRef = useRef<MediaStreamAudioDestinationNode | null>(null);
 
   // Initialize audio context with user interaction
   const initAudioContext = () => {
     if (!audioContext.current) {
       audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-      
-      // Create audio destination for recording
-      if (audioContext.current && !audioDestinationRef.current) {
-        audioDestinationRef.current = audioContext.current.createMediaStreamDestination();
-      }
     }
     return audioContext.current;
   };
@@ -196,11 +181,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       const masterGain = context.createGain();
       masterGain.gain.value = volume / 100;
       masterGain.connect(context.destination);
-      
-      // Connect masterGain to recording destination if recording
-      if (audioDestinationRef.current && isRecording) {
-        masterGain.connect(audioDestinationRef.current);
-      }
       
       // Determine which instruments to use (chord-specific, section-specific, or global)
       const instrumentsToUse = chord.instruments || 
@@ -984,94 +964,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     congaOsc.stop(context.currentTime + decayTime);
   };
 
-  // Start/stop recording
-  const toggleRecording = () => {
-    if (isRecording) {
-      stopRecording();
-    } else {
-      startRecording();
-    }
-  };
-  
-  // Start recording
-  const startRecording = () => {
-    if (!audioDestinationRef.current) {
-      initAudioContext(); // Initialize audio context if not already done
-    }
-    
-    if (audioDestinationRef.current) {
-      const recordedChunks: Blob[] = [];
-      
-      try {
-        const mediaRecorder = new MediaRecorder(audioDestinationRef.current.stream);
-        mediaRecorderRef.current = mediaRecorder;
-        
-        mediaRecorder.ondataavailable = (event) => {
-          if (event.data.size > 0) {
-            recordedChunks.push(event.data);
-          }
-        };
-        
-        mediaRecorder.onstop = () => {
-          setRecordedChunks(recordedChunks);
-          setRecordingAvailable(true);
-          toast({
-            title: "Recording Complete",
-            description: "Your chord progression recording is ready to download",
-          });
-        };
-        
-        mediaRecorder.start();
-        setIsRecording(true);
-        
-        // Start playing if not already
-        if (!playing) {
-          startPlayback();
-        }
-        
-        toast({
-          title: "Recording Started",
-          description: "The chord progression is now being recorded",
-        });
-      } catch (err) {
-        console.error("Error starting recording:", err);
-        toast({
-          title: "Recording Failed",
-          description: "Could not start recording. Please try again.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-  
-  // Stop recording
-  const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
-    }
-  };
-  
-  // Download recorded audio
-  const downloadRecording = () => {
-    if (recordedChunks.length === 0) return;
-    
-    const blob = new Blob(recordedChunks, { type: 'audio/mp3' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    document.body.appendChild(a);
-    a.style.display = 'none';
-    a.href = url;
-    a.download = `chord-progression-${style}-${bpm}bpm.mp3`;
-    a.click();
-    window.URL.revokeObjectURL(url);
-    
-    toast({
-      title: "Download Started",
-      description: `Chord progression has been downloaded as MP3`,
-    });
-  };
-
   // Start/stop playback
   const togglePlayback = () => {
     if (playing) {
@@ -1105,19 +997,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         
         // If we've reached the end of the current section
         if (nextChord >= currentSectionChords) {
-          // Check if the section should be repeated
-          const currentRepeat = sections[currentSection].repeat || 1;
-          const sectionPlayCount = Math.floor((currentSection + 1) / sections.length);
-          const shouldRepeatSection = sectionPlayCount < currentRepeat - 1;
-          
-          if (shouldRepeatSection) {
-            // Repeat the section from the first chord
-            if (sections[currentSection].chords.length > 0) {
-              playChord(sections[currentSection].chords[0], currentSection);
-            }
-            return 0;
-          }
-          
           setCurrentSection((prevSection) => {
             const nextSection = prevSection + 1;
             
@@ -1153,11 +1032,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       intervalRef.current = null;
     }
     setPlaying(false);
-    
-    // Also stop recording if it's ongoing
-    if (isRecording) {
-      stopRecording();
-    }
   };
 
   // Update chord in a section
@@ -1196,98 +1070,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     });
   };
 
-  // Update section repeat count
-  const updateSectionRepeat = (sectionIndex: number, repeatCount: number) => {
-    setSections((prevSections) => {
-      const updatedSections = [...prevSections];
-      updatedSections[sectionIndex] = {
-        ...updatedSections[sectionIndex],
-        repeat: repeatCount
-      };
-      return updatedSections;
-    });
-  };
-
-  // Add a new section
-  const addSection = () => {
-    // Default to adding the same progression as the last section, or a basic progression if none exists
-    const newSectionChords = sections.length > 0 
-      ? [...sections[sections.length - 1].chords]
-      : [
-          { root: "C", type: "major" },
-          { root: "G", type: "major" },
-          { root: "A", type: "minor" },
-          { root: "F", type: "major" },
-        ];
-    
-    // Create a new section that will be musically complementary to the last section
-    let newSectionData: ChordSectionData;
-    
-    if (style === "Jazz") {
-      // For Jazz, try a ii-V-I progression
-      newSectionData = {
-        id: `section-${sections.length + 1}`,
-        chords: [
-          { root: "D", type: "min7" },
-          { root: "G", type: "7" },
-          { root: "C", type: "maj7" },
-          { root: "C", type: "maj7" },
-        ],
-        instruments: ["piano", "bass", "drums"],
-        repeat: 1
-      };
-    } else if (style === "Blues") {
-      // For Blues, a I-IV-V progression
-      newSectionData = {
-        id: `section-${sections.length + 1}`,
-        chords: [
-          { root: "C", type: "7" },
-          { root: "F", type: "7" },
-          { root: "G", type: "7" },
-          { root: "C", type: "7" },
-        ],
-        instruments: ["guitar", "bass", "drums"],
-        repeat: 1
-      };
-    } else {
-      // Default to a standard section
-      newSectionData = {
-        id: `section-${sections.length + 1}`,
-        chords: newSectionChords,
-        instruments: sections.length > 0 ? [...(sections[sections.length - 1].instruments || [])] : ["piano", "guitar", "bass"],
-        repeat: 1
-      };
-    }
-    
-    setSections((prevSections) => [...prevSections, newSectionData]);
-    
-    toast({
-      title: "Section added",
-      description: `Added a new ${style}-style section to your progression.`,
-    });
-  };
-
-  // Remove a section
-  const removeSection = (sectionIndex: number) => {
-    // Don't remove if there's only one section left
-    if (sections.length <= 1) {
-      toast({
-        title: "Cannot remove section",
-        description: "You need at least one section in your progression.",
-        variant: "destructive",
-      });
-      return;
-    }
-    
-    setSections((prevSections) => 
-      prevSections.filter((_, index) => index !== sectionIndex)
-    );
-    
-    toast({
-      description: "Section removed from your progression.",
-    });
-  };
-
   // Generate chord progression based on selected style
   const generateChords = () => {
     // Get a progression based on the selected style
@@ -1297,56 +1079,47 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     switch(style) {
       case "Pop":
         progression = commonProgressions['Pop I-V-vi-IV'];
-        instruments = ["acousticPiano", "acousticGuitar", "bass", "drums"];
+        instruments = ["piano", "guitar", "bass"];
         break;
       case "Jazz":
         progression = commonProgressions['Jazz ii-V-I'];
-        instruments = ["piano", "electricBass", "saxophone", "drums"];
+        instruments = ["piano", "bass", "saxophone"];
         break;
       case "50s":
         progression = commonProgressions['50s I-vi-IV-V'];
-        instruments = ["piano", "acousticGuitar", "acousticBass"];
+        instruments = ["piano", "guitar", "bass"];
         break;
       case "Blues":
         progression = commonProgressions['Blues I-IV-V'];
-        instruments = ["electricGuitar", "electricBass", "drums"];
+        instruments = ["guitar", "bass", "drums"];
         break;
       case "Funk":
         progression = commonProgressions['Funk I-IV-V'];
-        instruments = ["electricGuitar", "electricBass", "drums", "organ"];
+        instruments = ["guitar", "bass", "drums", "organ"];
         break;
       case "Rock":
         progression = commonProgressions['Rock I-V-VI-IV'];
-        instruments = ["electricGuitar", "electricBass", "drums"];
+        instruments = ["guitar", "bass", "drums"];
         break;
       case "Latin":
         progression = commonProgressions['Latin i-bVII-bVI-V'];
-        instruments = ["acousticGuitar", "bass", "drums"];
+        instruments = ["guitar", "bass", "drums"];
         break;
       case "Soul":
         progression = commonProgressions['Soul ii-V-I'];
-        instruments = ["electricPiano", "electricBass", "strings", "drums"];
+        instruments = ["piano", "bass", "strings", "drums"];
         break;
       default:
         progression = commonProgressions['Pop I-V-vi-IV'];
         instruments = ["piano", "guitar", "bass"];
     }
     
-    // Update active instruments based on the style
-    const newActiveInstruments: Record<string, boolean> = {};
-    Object.keys(activeInstruments).forEach(key => {
-      newActiveInstruments[key] = instruments.includes(key);
-    });
-    
-    setActiveInstruments(newActiveInstruments);
-    
     // Replace current sections with the generated progression
     setSections([
       {
         id: "section-1",
         chords: progression,
-        instruments: instruments,
-        repeat: 1
+        instruments: instruments
       }
     ]);
     
@@ -1362,18 +1135,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       ...prev,
       [instrument]: !prev[instrument]
     }));
-  };
-
-  // Update instrument for a specific section
-  const updateSectionInstruments = (sectionIndex: number, instruments: string[]) => {
-    setSections(prev => {
-      const newSections = [...prev];
-      newSections[sectionIndex] = {
-        ...newSections[sectionIndex],
-        instruments
-      };
-      return newSections;
-    });
   };
 
   // Clean up on unmount
@@ -1442,29 +1203,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         </Button>
         
         <div className="flex items-center gap-2 ml-auto">
-          {/* Recording controls - Fixed the tooltip issue by removing the tooltip prop */}
-          <ToggleGroup type="single" value={isRecording ? "recording" : ""} className="mr-2">
-            <ToggleGroupItem 
-              value="recording"
-              aria-label="Toggle recording"
-              onClick={toggleRecording}
-              className={isRecording ? "bg-red-500 text-white animate-pulse" : ""}
-            >
-              <Mic className="h-4 w-4" />
-            </ToggleGroupItem>
-          </ToggleGroup>
-          
-          <Button 
-            variant="outline" 
-            size="icon" 
-            className="h-8 w-8"
-            onClick={downloadRecording}
-            disabled={!recordingAvailable}
-          >
-            <Download className="h-4 w-4" />
-          </Button>
-
-          {/* Volume slider */}
           <div className="flex items-center gap-2">
             <Music className="h-4 w-4" />
             <Slider
@@ -1479,198 +1217,169 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         </div>
       </div>
 
-      {/* Instruments accordion */}
-      <Accordion type="single" collapsible className="mb-6">
-        <AccordionItem value="instruments" className="border rounded-md animate-fade-in">
-          <AccordionTrigger className="px-4 py-2">Global Instruments</AccordionTrigger>
-          <AccordionContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 py-2 px-4">
-              <div className="space-y-6">
-                <h4 className="font-medium">Keyboards</h4>
-                <div className="space-y-3">
-                  <InstrumentToggle 
-                    id="piano" 
-                    label="Piano" 
-                    checked={activeInstruments.piano} 
-                    onToggle={() => toggleInstrument("piano")} 
-                  />
-                  <InstrumentToggle 
-                    id="acousticPiano" 
-                    label="Acoustic Piano" 
-                    checked={activeInstruments.acousticPiano} 
-                    onToggle={() => toggleInstrument("acousticPiano")} 
-                  />
-                  <InstrumentToggle 
-                    id="electricPiano" 
-                    label="Electric Piano" 
-                    checked={activeInstruments.electricPiano} 
-                    onToggle={() => toggleInstrument("electricPiano")} 
-                  />
-                  <InstrumentToggle 
-                    id="organ" 
-                    label="Organ" 
-                    checked={activeInstruments.organ} 
-                    onToggle={() => toggleInstrument("organ")} 
-                  />
-                  <InstrumentToggle 
-                    id="synth" 
-                    label="Synth" 
-                    checked={activeInstruments.synth} 
-                    onToggle={() => toggleInstrument("synth")} 
-                  />
+      {/* Main content with tabs */}
+      <Card className="p-4 mb-6">
+        <Tabs defaultValue="play" value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="mb-4">
+            <TabsTrigger value="play">Play</TabsTrigger>
+            <TabsTrigger value="about">About</TabsTrigger>
+            <TabsTrigger value="howto">How to Play</TabsTrigger>
+            <TabsTrigger value="tutorial">Tutorial</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="play" className="space-y-4">
+            {/* Chords display */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {sections[0].chords.map((chord, index) => (
+                <div 
+                  key={index} 
+                  className={`p-3 rounded-md border text-center transition-all ${
+                    playing && currentSection === 0 && currentChord === index 
+                      ? 'bg-primary/20 border-primary scale-105' 
+                      : 'bg-card border-border'
+                  }`}
+                  onClick={() => playChord(chord, 0)}
+                >
+                  <div className="text-lg font-semibold">
+                    {chord.root}{chordTypes.find(ct => ct.id === chord.type)?.symbol || ''}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    {chordTypes.find(ct => ct.id === chord.type)?.name || ''}
+                  </div>
                 </div>
-              </div>
-              
-              <div className="space-y-6">
-                <h4 className="font-medium">Strings</h4>
-                <div className="space-y-3">
-                  <InstrumentToggle 
-                    id="guitar" 
-                    label="Guitar" 
-                    checked={activeInstruments.guitar} 
-                    onToggle={() => toggleInstrument("guitar")} 
-                  />
-                  <InstrumentToggle 
-                    id="acousticGuitar" 
-                    label="Acoustic Guitar" 
-                    checked={activeInstruments.acousticGuitar} 
-                    onToggle={() => toggleInstrument("acousticGuitar")} 
-                  />
-                  <InstrumentToggle 
-                    id="electricGuitar" 
-                    label="Electric Guitar" 
-                    checked={activeInstruments.electricGuitar} 
-                    onToggle={() => toggleInstrument("electricGuitar")} 
-                  />
-                  <InstrumentToggle 
-                    id="bass" 
-                    label="Bass" 
-                    checked={activeInstruments.bass} 
-                    onToggle={() => toggleInstrument("bass")} 
-                  />
-                  <InstrumentToggle 
-                    id="acousticBass" 
-                    label="Acoustic Bass" 
-                    checked={activeInstruments.acousticBass} 
-                    onToggle={() => toggleInstrument("acousticBass")} 
-                  />
-                  <InstrumentToggle 
-                    id="electricBass" 
-                    label="Electric Bass" 
-                    checked={activeInstruments.electricBass} 
-                    onToggle={() => toggleInstrument("electricBass")} 
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-6">
-                <h4 className="font-medium">Orchestral</h4>
-                <div className="space-y-3">
-                  <InstrumentToggle 
-                    id="strings" 
-                    label="Strings" 
-                    checked={activeInstruments.strings} 
-                    onToggle={() => toggleInstrument("strings")} 
-                  />
-                  <InstrumentToggle 
-                    id="brass" 
-                    label="Brass" 
-                    checked={activeInstruments.brass} 
-                    onToggle={() => toggleInstrument("brass")} 
-                  />
-                  <InstrumentToggle 
-                    id="saxophone" 
-                    label="Saxophone" 
-                    checked={activeInstruments.saxophone} 
-                    onToggle={() => toggleInstrument("saxophone")} 
-                  />
-                  <InstrumentToggle 
-                    id="flute" 
-                    label="Flute" 
-                    checked={activeInstruments.flute} 
-                    onToggle={() => toggleInstrument("flute")} 
-                  />
-                </div>
-              </div>
-              
-              <div className="space-y-6">
-                <h4 className="font-medium">Percussion</h4>
-                <div className="space-y-3">
-                  <InstrumentToggle 
-                    id="drums" 
-                    label="Drums" 
-                    checked={activeInstruments.drums} 
-                    onToggle={() => toggleInstrument("drums")} 
-                  />
-                </div>
+              ))}
+            </div>
+            
+            {/* Instruments */}
+            <div className="mt-6">
+              <h3 className="text-sm font-medium mb-3">Active Instruments</h3>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-4 gap-y-2">
+                {Object.entries(activeInstruments)
+                  .filter(([id, active]) => sections[0].instruments?.includes(id) || active)
+                  .map(([id, active]) => (
+                    <div key={id} className="flex items-center justify-between">
+                      <Label htmlFor={`${id}-toggle`} className="text-sm font-medium cursor-pointer">{availableInstruments[id]?.name}</Label>
+                      <Switch 
+                        id={`${id}-toggle`} 
+                        checked={active} 
+                        onCheckedChange={() => toggleInstrument(id)} 
+                        className="transition-all data-[state=checked]:bg-primary"
+                      />
+                    </div>
+                  ))
+                }
               </div>
             </div>
-            <div className="px-4 mt-2">
-              <p className="text-sm text-muted-foreground">
-                These are global instruments. You can also set section-specific instruments by clicking the instrument icon in each section.
+          </TabsContent>
+
+          <TabsContent value="about">
+            <div className="prose dark:prose-invert">
+              <h3>About Chord Progression Player</h3>
+              <p>
+                The Chord Progression Player is a tool designed to help musicians, songwriters, and music enthusiasts experiment with different chord progressions and musical styles.
+              </p>
+              <p>
+                This interactive tool allows you to:
+              </p>
+              <ul className="pl-6 list-disc space-y-1">
+                <li>Play common chord progressions across various musical genres</li>
+                <li>Choose from different musical styles such as Pop, Jazz, Rock, Blues, and more</li>
+                <li>Customize the instrumentation to hear how progressions sound with different instruments</li>
+                <li>Adjust the tempo (BPM) to match your preferred playing speed</li>
+                <li>Generate style-specific chord progressions with appropriate instrumentation</li>
+              </ul>
+              <p>
+                Whether you're looking for inspiration for your next song, learning about music theory, or just having fun exploring different sounds, the Chord Progression Player provides an intuitive interface to experiment with harmonic ideas.
               </p>
             </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
+          </TabsContent>
 
-      {/* Chord sections */}
-      <Card className="p-4 mb-6 border border-dashed border-muted-foreground/20">
-        <h3 className="text-lg font-medium mb-4">Progression Structure</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Each section can have its own instruments and can repeat multiple times. 
-          Sections play in order (1, 2, 3...) and then loop back to the beginning.
-        </p>
-        
-        <div className="space-y-6 mt-6">
-          {sections.map((section, sectionIndex) => (
-            <ChordSection 
-              key={section.id}
-              section={section}
-              sectionIndex={sectionIndex}
-              isPlaying={playing && currentSection === sectionIndex}
-              currentChord={currentChord}
-              updateChord={(chordIndex, newChord) => updateChord(sectionIndex, chordIndex, newChord)}
-              playChord={(chord) => playChord(chord, sectionIndex)}
-              onAddChord={() => addChordToSection(sectionIndex)}
-              onRemoveSection={() => removeSection(sectionIndex)}
-              allInstruments={availableInstruments}
-              updateSectionInstruments={(instruments) => updateSectionInstruments(sectionIndex, instruments)}
-              sectionRepeat={section.repeat || 1}
-              updateSectionRepeat={(repeats) => updateSectionRepeat(sectionIndex, repeats)}
-            />
-          ))}
-        </div>
+          <TabsContent value="howto">
+            <div className="prose dark:prose-invert">
+              <h3>How to Play</h3>
+              
+              <div className="mb-4">
+                <h4>Getting Started</h4>
+                <ol className="pl-6 list-decimal space-y-1">
+                  <li>Choose a musical style using the Style dropdown</li>
+                  <li>Click "Generate chords" to create a progression suited to that style</li>
+                  <li>Press the Play button to hear your progression</li>
+                  <li>Adjust the BPM slider to speed up or slow down the playback</li>
+                </ol>
+              </div>
+              
+              <div className="mb-4">
+                <h4>Customizing Your Sound</h4>
+                <ul className="pl-6 list-disc space-y-1">
+                  <li>Toggle instruments on or off using the switches in the Active Instruments section</li>
+                  <li>Click on any chord box to hear that individual chord</li>
+                  <li>Adjust the volume using the slider in the top controls</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4>Tips for Better Results</h4>
+                <ul className="pl-6 list-disc space-y-1">
+                  <li>Different styles use different instrumental combinations - experiment with them</li>
+                  <li>Jazz progressions tend to use more complex chord types (7th, maj7, min7)</li>
+                  <li>Rock and Pop styles often work well with simpler major and minor chords</li>
+                  <li>Try the same progression at different tempos to change the feel</li>
+                </ul>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="tutorial">
+            <div className="prose dark:prose-invert">
+              <h3>Chord Progression Tutorial</h3>
+              
+              <div className="mb-4">
+                <h4>Basics of Chord Progressions</h4>
+                <p>
+                  A chord progression is a sequence of chords played in a specific order. In Western music, chord progressions provide the harmonic foundation for melodies and are often what gives a song its distinctive feel.
+                </p>
+              </div>
+              
+              <div className="mb-4">
+                <h4>Common Progressions</h4>
+                <ul className="pl-6 space-y-2">
+                  <li>
+                    <strong>I-IV-V (1-4-5):</strong> The foundation of blues and rock music. In C major, this would be C-F-G.
+                  </li>
+                  <li>
+                    <strong>I-V-vi-IV (1-5-6-4):</strong> Extremely common in pop music. In C major: C-G-Am-F.
+                  </li>
+                  <li>
+                    <strong>ii-V-I (2-5-1):</strong> The backbone of jazz. In C major: Dm7-G7-Cmaj7.
+                  </li>
+                  <li>
+                    <strong>I-vi-IV-V (1-6-4-5):</strong> Classic 50s progression. In C major: C-Am-F-G.
+                  </li>
+                </ul>
+              </div>
+              
+              <div className="mb-4">
+                <h4>Understanding Roman Numerals</h4>
+                <p>
+                  In music theory, Roman numerals indicate the position of a chord within a scale:
+                </p>
+                <ul className="pl-6 list-disc space-y-1">
+                  <li>Uppercase (I, IV, V) represents major chords</li>
+                  <li>Lowercase (ii, iii, vi) represents minor chords</li>
+                  <li>Numbers relate to the scale degree (I = 1st note of scale, etc.)</li>
+                </ul>
+              </div>
+              
+              <div>
+                <h4>Experiment with the Player</h4>
+                <p>
+                  Use this chord progression player to experiment with different progressions across musical styles. Listen to how changing instruments or tempo affects the feel of the same chord sequence. Try generating progressions in different styles to hear how they differ harmonically.
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </Card>
-
-      {/* Section controls */}
-      <div className="flex gap-4">
-        <Button variant="outline" onClick={addSection} className="ml-auto transition-all hover:bg-primary/10">
-          <Plus className="mr-2 h-4 w-4" />
-          Add section
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-interface InstrumentToggleProps {
-  id: string;
-  label: string;
-  checked: boolean;
-  onToggle: () => void;
-}
-
-const InstrumentToggle: React.FC<InstrumentToggleProps> = ({ id, label, checked, onToggle }) => {
-  return (
-    <div className="flex items-center justify-between">
-      <Label htmlFor={`${id}-toggle`} className="text-sm font-medium cursor-pointer">{label}</Label>
-      <Switch 
-        id={`${id}-toggle`} 
-        checked={checked} 
-        onCheckedChange={onToggle} 
-        className="transition-all data-[state=checked]:bg-primary"
-      />
     </div>
   );
 };
