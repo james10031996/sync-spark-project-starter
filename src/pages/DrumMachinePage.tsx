@@ -3,7 +3,7 @@ import React from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import DrumMachine from "@/components/music/DrumMachine";
 import { motion } from "framer-motion";
-import { Square } from "lucide-react"; // Using Square instead of Stop
+import { Square } from "lucide-react"; 
 
 const DrumMachinePage: React.FC = () => {
   return (
