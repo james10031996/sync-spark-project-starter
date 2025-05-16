@@ -1,7 +1,6 @@
 
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChordInProgression } from "@/components/music/ChordProgressionPlayer";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -9,20 +8,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-
-// Define root notes and chord types
-const rootNotes = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-const chordTypes = [
-  { id: "major", name: "Major", symbol: "" },
-  { id: "minor", name: "Minor", symbol: "m" },
-  { id: "7", name: "7th", symbol: "7" },
-  { id: "maj7", name: "Major 7th", symbol: "maj7" },
-  { id: "min7", name: "Minor 7th", symbol: "m7" },
-  { id: "dim", name: "Diminished", symbol: "dim" },
-  { id: "aug", name: "Augmented", symbol: "aug" },
-  { id: "sus2", name: "Sus2", symbol: "sus2" },
-  { id: "sus4", name: "Sus4", symbol: "sus4" },
-];
+import { ChordInProgression, rootNotes, chordTypes } from "@/components/music/types/chordTypes";
 
 interface ChordBlockProps {
   chord: ChordInProgression;

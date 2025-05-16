@@ -15,7 +15,7 @@ export const useChordPlayer = (volume: number = 80) => {
     return audioContext.current;
   };
   
-  // Play a chord with improved sound
+  // Play a chord with improved sound quality
   const playChord = (
     chord: ChordInProgression, 
     instrumentsToUse: string[], 
@@ -23,9 +23,46 @@ export const useChordPlayer = (volume: number = 80) => {
   ) => {
     try {
       const context = initAudioContext();
+      
+      // Create master compressor for better mix
+      const compressor = context.createDynamicsCompressor();
+      compressor.threshold.value = -24;
+      compressor.knee.value = 30;
+      compressor.ratio.value = 12;
+      compressor.attack.value = 0.003;
+      compressor.release.value = 0.25;
+      
+      // Create master gain node
       const masterGain = context.createGain();
-      masterGain.gain.value = 1.0;  // Master gain is controlled by individual instrument volumes now
-      masterGain.connect(context.destination);
+      masterGain.gain.value = 1.0;
+      
+      // Add a subtle reverb to the master output for overall space
+      const masterReverb = context.createConvolver();
+      
+      // Create impulse response for small room reverb
+      const impulseLength = 0.5;
+      const rate = context.sampleRate;
+      const impulse = context.createBuffer(2, rate * impulseLength, rate);
+      
+      for (let channel = 0; channel < impulse.numberOfChannels; channel++) {
+        const impulseData = impulse.getChannelData(channel);
+        for (let i = 0; i < impulseData.length; i++) {
+          impulseData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / (rate * impulseLength), 2);
+        }
+      }
+      
+      masterReverb.buffer = impulse;
+      
+      // Create master reverb gain
+      const masterReverbGain = context.createGain();
+      masterReverbGain.gain.value = 0.1; // Subtle reverb
+      
+      // Connect master chain with split for dry/wet reverb
+      masterGain.connect(compressor);
+      masterGain.connect(masterReverb);
+      masterReverb.connect(masterReverbGain);
+      masterReverbGain.connect(compressor);
+      compressor.connect(context.destination);
       
       if (instrumentsToUse.length === 0) {
         // If no instruments are selected, default to piano
@@ -35,63 +72,77 @@ export const useChordPlayer = (volume: number = 80) => {
       // Define frequencies for notes in the chord
       const rootIndex = rootNotes.indexOf(chord.root);
       
-      // Set intervals based on chord type
+      // Set intervals based on chord type with improved voicings
       let intervals: number[];
       switch (chord.type) {
         case "minor":
-          intervals = [0, 3, 7];
+          intervals = [0, 3, 7, 12]; // Added octave for fullness
           break;
         case "7":
           intervals = [0, 4, 7, 10];
           break;
         case "maj7":
-          intervals = [0, 4, 7, 11];
+          intervals = [0, 4, 7, 11, 14]; // Added 5th in higher octave
           break;
         case "min7":
-          intervals = [0, 3, 7, 10];
+          intervals = [0, 3, 7, 10, 12]; // Added octave for richness
           break;
         case "dim":
-          intervals = [0, 3, 6];
+          intervals = [0, 3, 6, 9]; // Added diminished 7th
           break;
         case "aug":
-          intervals = [0, 4, 8];
+          intervals = [0, 4, 8, 12]; // Added octave
           break;
         case "sus2":
-          intervals = [0, 2, 7];
+          intervals = [0, 2, 7, 12]; // Added octave
           break;
         case "sus4":
-          intervals = [0, 5, 7];
+          intervals = [0, 5, 7, 12]; // Added octave
           break;
         default:
-          intervals = [0, 4, 7]; // Default to major chord intervals
+          intervals = [0, 4, 7, 12]; // Default to major chord intervals with octave
       }
       
-      // Create tones for each instrument with enhanced sound quality
-      instrumentsToUse.forEach(instrumentId => {
+      // Create tones for each instrument with enhanced sound quality and spatial positioning
+      instrumentsToUse.forEach((instrumentId, instrumentIndex) => {
+        // Adjust timing per instrument for more realistic ensemble feel
+        const instrumentDelay = instrumentIndex * 0.005;
+        
         const instrumentSettings = getInstrumentSettings(instrumentId, pattern);
         
         // Create tones for each note in the chord with slight timing variations for realism
-        intervals.forEach((interval, i) => {
+        intervals.forEach((interval, noteIndex) => {
           const noteIndex = (rootIndex + interval) % 12;
           const octaveOffset = Math.floor((rootIndex + interval) / 12);
           const note = rootNotes[noteIndex];
           
           // Calculate frequency using scientific pitch notation
-          const a4Index = rootNotes.indexOf("A") + (4 * 12);
-          const noteFullIndex = rootNotes.indexOf(note) + ((instrumentSettings.octave + octaveOffset) * 12);
-          const frequency = 440 * Math.pow(2, (noteFullIndex - a4Index) / 12);
+          const frequency = getNoteFrequency(note, instrumentSettings.octave + octaveOffset);
           
-          // Small timing variation for natural feel
-          const noteDelay = i * 0.02 + (Math.random() * 0.01);
+          // Small timing variation for natural feel - different for each note and instrument
+          const noteDelay = instrumentDelay + (noteIndex * 0.012) + (Math.random() * 0.005);
+          
+          // Add slight velocity variation based on note position in chord
+          const noteVolumeMultiplier = interval === 0 ? 1.0 : (interval === intervals[1] ? 0.92 : 0.85);
           
           createInstrumentTone(
             context, 
             frequency, 
             masterGain,
             instrumentId,
-            instrumentSettings,
+            {
+              ...instrumentSettings,
+              // Add slight variations to settings based on pattern/style
+              attack: pattern === "Jazz" ? 
+                instrumentSettings.attack * 1.2 : 
+                pattern === "Blues" ? 
+                  instrumentSettings.attack * 0.8 : 
+                  instrumentSettings.attack,
+              // Adjust panning based on note position for width
+              panning: instrumentSettings.panning + ((noteIndex % 3) * 0.05 - 0.05)
+            },
             noteDelay,
-            volume
+            volume * noteVolumeMultiplier
           );
         });
       });

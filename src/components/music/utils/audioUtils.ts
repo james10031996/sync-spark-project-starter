@@ -147,7 +147,7 @@ export const createInstrumentTone = (
     osc.detune.value = settings.detune;
   }
   
-  // Volume adjustment based on instrument for better balance
+  // Volume adjustment based on instrument for better balance and clarity
   const instrumentVolume = getInstrumentVolume(instrumentId) * (volume / 100);
   
   // Apply improved ADSR envelope for more natural sound
@@ -159,7 +159,7 @@ export const createInstrumentTone = (
   gainNode.gain.setValueAtTime(0, now + delay);
   gainNode.gain.linearRampToValueAtTime(instrumentVolume, now + delay + attackTime);
   gainNode.gain.setValueAtTime(instrumentVolume * settings.sustain, now + delay + attackTime + decayTime);
-  gainNode.gain.exponentialRampToValueAtTime(0.001, now + delay + attackTime + decayTime + releaseTime);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, now + delay + attackTime + decayTime + releaseTime);
   
   // Connect nodes with improved routing
   osc.connect(filter);
@@ -168,9 +168,9 @@ export const createInstrumentTone = (
   
   // Add enhanced effects based on instrument type
   if (["piano", "strings", "synth"].includes(instrumentId)) {
-    // Create more sophisticated reverb with feedback
+    // Create more sophisticated reverb with feedback for spatial depth
     const reverbGain = context.createGain();
-    reverbGain.gain.value = 0.18;
+    reverbGain.gain.value = 0.2; // Increased for better audibility
     
     const delay1 = context.createDelay();
     delay1.delayTime.value = 0.12;
@@ -195,18 +195,97 @@ export const createInstrumentTone = (
     reverbGain.connect(masterGain);
   }
   
-  // For electric guitar and synth, add subtle distortion
+  // For electric guitar and synth, add better distortion and harmonics
   if (["electricGuitar", "synth"].includes(instrumentId)) {
     const distortion = context.createWaveShaper();
     distortion.curve = createDistortionCurve(30);
     distortion.oversample = '4x';
     
     const distortionGain = context.createGain();
-    distortionGain.gain.value = 0.1;
+    distortionGain.gain.value = 0.15; // Increased for more character
     
     gainNode.connect(distortion);
     distortion.connect(distortionGain);
     distortionGain.connect(masterGain);
+    
+    // Add a second oscillator slightly detuned for richer sound
+    const osc2 = context.createOscillator();
+    osc2.type = "sawtooth";
+    osc2.frequency.value = frequency;
+    osc2.detune.value = instrumentId === "electricGuitar" ? 5 : -5;
+    
+    const osc2Gain = context.createGain();
+    osc2Gain.gain.value = 0.15;
+    
+    osc2.connect(osc2Gain);
+    osc2Gain.connect(masterGain);
+    osc2.start(now + delay);
+    osc2.stop(now + delay + attackTime + decayTime + releaseTime + 0.1);
+  }
+  
+  // For bass, add sub-bass enhancement
+  if (instrumentId === "bass") {
+    // Add sub-oscillator for deep bass
+    const subOsc = context.createOscillator();
+    subOsc.type = "sine";
+    subOsc.frequency.value = frequency / 2; // One octave lower
+    
+    const subGain = context.createGain();
+    subGain.gain.value = 0.3;
+    
+    const subFilter = context.createBiquadFilter();
+    subFilter.type = "lowpass";
+    subFilter.frequency.value = 120; // Only pass very low frequencies
+    
+    subOsc.connect(subFilter);
+    subFilter.connect(subGain);
+    subGain.connect(masterGain);
+    
+    subOsc.start(now + delay);
+    subOsc.stop(now + delay + attackTime + decayTime + releaseTime + 0.1);
+  }
+  
+  // For acoustic instruments, add body resonance
+  if (["acousticGuitar", "piano"].includes(instrumentId)) {
+    const bodyResonance = context.createBiquadFilter();
+    bodyResonance.type = "peaking";
+    bodyResonance.frequency.value = instrumentId === "acousticGuitar" ? 220 : 420;
+    bodyResonance.Q.value = 5;
+    bodyResonance.gain.value = 6;
+    
+    const resonanceGain = context.createGain();
+    resonanceGain.gain.value = 0.2;
+    
+    gainNode.connect(bodyResonance);
+    bodyResonance.connect(resonanceGain);
+    resonanceGain.connect(masterGain);
+  }
+  
+  // For organ, add harmonics
+  if (instrumentId === "organ") {
+    // Add multiple oscillators for organ harmonics
+    const frequencies = [
+      frequency * 2, // One octave up
+      frequency * 3, // Fifth above octave
+      frequency * 4  // Two octaves up
+    ];
+    
+    const gains = [0.2, 0.1, 0.05];
+    
+    frequencies.forEach((freq, i) => {
+      const harmOsc = context.createOscillator();
+      harmOsc.type = "sine";
+      harmOsc.frequency.value = freq;
+      
+      const harmGain = context.createGain();
+      harmGain.gain.value = gains[i];
+      
+      harmOsc.connect(harmGain);
+      harmGain.connect(masterGain);
+      
+      harmOsc.start(now + delay);
+      harmOsc.stop(now + delay + attackTime + decayTime + releaseTime + 0.1);
+    });
   }
   
   gainNode.connect(masterGain);
@@ -218,29 +297,29 @@ export const createInstrumentTone = (
   return { osc, gainNode }; // Return for potential cleanup
 };
 
-// Get instrument-specific volume balance
+// Get instrument-specific volume balance with improved levels
 const getInstrumentVolume = (instrumentId: string): number => {
   switch (instrumentId) {
     case "piano":
-      return 0.6;
+      return 0.65; // Slightly raised for better clarity
     case "acousticGuitar":
-      return 0.55;
+      return 0.58; // Enhanced for better presence
     case "electricGuitar":
-      return 0.45;
+      return 0.5; // Boosted for better audibility
     case "bass":
-      return 0.7;
+      return 0.75; // Slight boost
     case "strings":
-      return 0.5;
+      return 0.55; // Better balance
     case "synth":
-      return 0.4;
+      return 0.45; // Adjusted for blend
     case "organ":
-      return 0.5;
+      return 0.55; // Better presence
     default:
       return 0.5;
   }
 };
 
-// Create distortion curve for electric guitar and synth
+// Create distortion curve for electric guitar and synth with improved harmonics
 function createDistortionCurve(amount: number) {
   const samples = 44100;
   const curve = new Float32Array(samples);
