@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,7 @@ interface ChordProgressionPlayerProps {
   className?: string;
 }
 
-// Add more chord progression patterns for different music styles
+// Add functional chord progression patterns for different music styles
 const CHORD_PATTERNS = {
   Pop: [
     { root: "C", type: "major" },
@@ -49,31 +48,7 @@ const CHORD_PATTERNS = {
     { root: "D", type: "major" },
     { root: "A", type: "major" },
     { root: "E", type: "major" },
-  ],
-  Folk: [
-    { root: "G", type: "major" },
-    { root: "C", type: "major" },
-    { root: "D", type: "major" },
-    { root: "G", type: "major" },
-  ],
-  RnB: [
-    { root: "F#", type: "minor" },
-    { root: "D", type: "major" },
-    { root: "E", type: "major" },
-    { root: "C#", type: "minor" },
-  ],
-  EDM: [
-    { root: "C", type: "major" },
-    { root: "G", type: "major" },
-    { root: "F", type: "major" },
-    { root: "G", type: "7" },
-  ],
-  Classical: [
-    { root: "C", type: "major" },
-    { root: "A", type: "minor" },
-    { root: "F", type: "major" },
-    { root: "G", type: "7" },
-  ],
+  ]
 };
 
 /**
@@ -112,7 +87,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
   
   // Audio context and timer references
   const intervalRef = useRef<number | null>(null);
-  const { playChord, initAudioContext } = useChordPlayer(volume);
+  const { playChord, initAudioContext, stopAllSounds } = useChordPlayer(volume);
 
   // Start/stop playback
   const togglePlayback = () => {
@@ -192,6 +167,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       intervalRef.current = null;
     }
     setPlaying(false);
+    stopAllSounds();
   };
 
   // Update chord in a section
@@ -294,32 +270,12 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         title: `${pattern} progression generated`,
         description: "Pre-defined chord progressions have been applied to all sections.",
       });
-    } else {
-      // Original random chord generation if the pattern doesn't exist
-      setSections(prevSections => {
-        return prevSections.map(section => {
-          // Generate random chords for each section
-          const randomChords: ChordInProgression[] = [];
-          
-          // Generate 4 random chords
-          for (let i = 0; i < 4; i++) {
-            randomChords.push({
-              root: rootNotes[Math.floor(Math.random() * rootNotes.length)],
-              type: chordTypes[Math.floor(Math.random() * chordTypes.length)].id
-            });
-          }
-          
-          return {
-            ...section,
-            chords: randomChords
-          };
-        });
-      });
       
-      toast({
-        title: "Random progressions generated",
-        description: "Random chord progressions have been created for all sections.",
-      });
+      // If currently playing, update sound immediately
+      if (playing && currentSection >= 0 && currentChord >= 0) {
+        const chord = patternChords[currentChord % patternChords.length];
+        handlePlayChord(chord, currentSection);
+      }
     }
   };
 
@@ -361,15 +317,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     });
   }, [playing, currentSection, currentChord, playChord, pattern]);
 
-  // Clean up on unmount
-  useEffect(() => {
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, []);
-
   // Update interval if BPM changes during playback
   useEffect(() => {
     if (playing) {
@@ -377,6 +324,16 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
       startPlayback();
     }
   }, [bpm]);
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      stopAllSounds();
+    };
+  }, [stopAllSounds]);
 
   return (
     <div className={`w-full max-w-4xl mx-auto ${className} animate-fade-in`}>
@@ -412,10 +369,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
             <SelectItem value="Jazz">Jazz</SelectItem>
             <SelectItem value="Blues">Blues</SelectItem>
             <SelectItem value="Rock">Rock</SelectItem>
-            <SelectItem value="Folk">Folk</SelectItem>
-            <SelectItem value="RnB">R&B</SelectItem>
-            <SelectItem value="EDM">EDM</SelectItem>
-            <SelectItem value="Classical">Classical</SelectItem>
           </SelectContent>
         </Select>
 
@@ -460,12 +413,12 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
                   updateSectionRepeat={() => {}}
                 />
                 
-                {/* Add Remove button at the top right */}
+                {/* Clear "Remove" button at the top right with trash icon */}
                 {sections.length > 1 && (
                   <Button 
-                    variant="ghost" 
+                    variant="outline" 
                     size="sm"
-                    className="absolute top-0 right-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="absolute top-0 right-0 flex items-center text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
                     onClick={() => removeSection(sectionIndex)}
                   >
                     <Trash className="h-4 w-4 mr-1" />

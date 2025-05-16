@@ -462,68 +462,115 @@ export const createEnhancedDrumSound = async (type: string, context: AudioContex
   
   switch (type) {
     case "kick": {
-      // Enhanced kick drum with deeper sub frequencies and better punch
-      buffer = context.createBuffer(2, sampleRate * 0.6, sampleRate);
+      // Redesigned kick drum with much stronger bass presence and impact
+      buffer = context.createBuffer(2, sampleRate * 0.8, sampleRate);
       const dataLeft = buffer.getChannelData(0);
       const dataRight = buffer.getChannelData(1);
       
       for (let i = 0; i < dataLeft.length; i++) {
         const t = i / sampleRate;
         
-        // Main frequency sweep (deeper than before)
-        const frequency = 60 * Math.exp(-20 * t);
+        // Much deeper frequency sweep for stronger bass
+        const frequency = 55 * Math.exp(-15 * t);
         
-        // Add stronger punch at the start
-        const punchEnv = Math.exp(-150 * t);
-        const punch = Math.sin(2 * Math.PI * 220 * t) * punchEnv * 0.7;
+        // Very strong attack transient for more impact
+        const punchEnv = Math.exp(-200 * t);
+        const punch = Math.sin(2 * Math.PI * 180 * t) * punchEnv * 0.9;
         
-        // Enhanced sub bass
-        const subFreq = 40 * Math.exp(-12 * t);
-        const sub = Math.sin(2 * Math.PI * subFreq * t) * 0.85;
+        // Enhanced sub bass with longer sustain
+        const subFreq = 35 * Math.exp(-8 * t);
+        const sub = Math.sin(2 * Math.PI * subFreq * t) * 1.2;
         
-        const mainSound = Math.sin(2 * Math.PI * frequency * t) * Math.exp(-12 * t);
+        // Main body of the kick
+        const mainSound = Math.sin(2 * Math.PI * frequency * t) * Math.exp(-9 * t);
         
-        // Combine components with better ratios
-        const combined = mainSound * 0.7 + punch * 0.35 + sub * 0.5;
+        // Combine components with better ratios for more impact
+        const combined = mainSound * 0.75 + punch * 0.45 + sub * 0.8;
         
-        // Apply stronger attack envelope
-        const env = Math.exp(-7 * t);
+        // Apply stronger attack envelope with longer decay
+        const env = Math.exp(-5 * t);
         
-        // Add subtle stereo variation for dimension
-        dataLeft[i] = combined * env;
-        dataRight[i] = combined * env * 0.98;
+        // Add subtle stereo variation
+        dataLeft[i] = combined * env * 1.2; // Boost overall volume
+        dataRight[i] = combined * env * 1.18; // Slight stereo difference
       }
       break;
     }
     case "snare": {
-      // Completely redesigned snare with more snap and body
+      // Completely redesigned snare to be distinctly different from clap
       buffer = context.createBuffer(2, sampleRate * 0.4, sampleRate);
+      const dataLeft = buffer.getChannelData(0);
+      const dataRight = buffer.getChannelData(1);
+      
+      // Create a snare with more "crack" and drum body resonance
+      for (let i = 0; i < dataLeft.length; i++) {
+        const t = i / sampleRate;
+        
+        // Sharper initial attack 
+        const snapEnv = Math.exp(-200 * t);
+        const snap = (Math.random() * 2 - 1) * snapEnv * 0.9;
+        
+        // Drum body component with specific resonant frequencies
+        const bodyEnv = Math.exp(-35 * t);
+        const body1 = Math.sin(2 * Math.PI * 180 * t) * bodyEnv * 0.5;
+        const body2 = Math.sin(2 * Math.PI * 330 * t) * bodyEnv * 0.3;
+        
+        // Noise component with different filtering than clap
+        const noise = (Math.random() * 2 - 1);
+        const noiseHP = noise - (Math.random() * 2 - 1) * 0.2;
+        const noiseEnv = Math.exp(-t * 20);
+        
+        // Create a "metal snare" character with higher frequency content
+        const metallic = Math.sin(2 * Math.PI * 900 * t + Math.random()) * Math.exp(-50 * t) * 0.2;
+        
+        // Combine for true snare character (very different from clap)
+        dataLeft[i] = snap * 0.7 + (body1 + body2) * 0.6 + noiseHP * noiseEnv * 0.5 + metallic;
+        
+        // Slight stereo variation for width
+        dataRight[i] = snap * 0.68 + (body1 * 0.96 + body2 * 1.04) * 0.6 + 
+          noiseHP * noiseEnv * 0.52 * (1 + (Math.random() * 0.05 - 0.025)) + metallic * 0.98;
+      }
+      break;
+    }
+    case "clap": {
+      // Keep clap distinct with more "human hand" character
+      buffer = context.createBuffer(2, sampleRate * 0.5, sampleRate);
       const dataLeft = buffer.getChannelData(0);
       const dataRight = buffer.getChannelData(1);
       
       for (let i = 0; i < dataLeft.length; i++) {
         const t = i / sampleRate;
+        let env = 0;
         
-        // Snappy transient attack
-        const snapEnv = Math.exp(-180 * t);
-        const snap = (Math.random() * 2 - 1) * snapEnv * 0.8;
+        // Create multiple staggered transients for "clap" character
+        if (t < 0.001) env = t / 0.001;
+        else if (t < 0.006) env = 1 - (t - 0.001) / 0.005;
+        else if (t < 0.007) env = 0;
+        else if (t < 0.008) env = (t - 0.007) / 0.001;
+        else if (t < 0.015) env = 1 - (t - 0.008) / 0.007;
+        else if (t < 0.016) env = 0;
+        else if (t < 0.017) env = (t - 0.016) / 0.001;
+        else if (t < 0.025) env = 1 - (t - 0.017) / 0.008;
+        else if (t < 0.026) env = 0;
+        else if (t < 0.027) env = (t - 0.026) / 0.001;
         
-        // Body component (tone)
-        const toneEnv = Math.exp(-25 * t);
-        const tone1 = Math.sin(2 * Math.PI * 230 * t) * toneEnv * 0.4;
-        const tone2 = Math.sin(2 * Math.PI * 460 * t) * toneEnv * 0.3;
+        // More room reverb character - distinctly different from snare
+        if (t >= 0.027) env = Math.exp(-(t - 0.027) * 9) * 0.9;
         
-        // Noise component with better filtering
-        const noise = (Math.random() * 2 - 1);
-        const noiseHP = noise - (Math.random() * 2 - 1) * 0.3;
-        const noiseEnv = Math.exp(-t * 15);
+        // Higher frequency content for hand clap character
+        let noise = 0;
+        for (let j = 0; j < 12; j++) {
+          noise += Math.sin(2 * Math.PI * (3000 + j * 500) * t * (1 + Math.random() * 0.1)) * 0.08;
+        }
+        noise += (Math.random() * 2 - 1) * 0.3;
         
-        // Combine components with better balance for snare character
-        dataLeft[i] = snap * 0.6 + (tone1 + tone2) * 0.4 + noiseHP * noiseEnv * 0.6;
+        // Apply envelope and compression
+        const signal = noise * env;
+        const compressed = signal * (1 - Math.max(0, signal - 0.7) * 0.4);
         
-        // Slight stereo variation for width
-        dataRight[i] = snap * 0.58 + (tone1 * 0.95 + tone2 * 1.05) * 0.4 + 
-          noiseHP * noiseEnv * 0.62 * (1 + (Math.random() * 0.06 - 0.03));
+        // Very wide stereo for clap character
+        dataLeft[i] = compressed * 0.95;
+        dataRight[i] = (Math.random() * 2 - 1) * env * 0.9; // Extremely wide stereo
       }
       break;
     }
@@ -554,49 +601,6 @@ export const createEnhancedDrumSound = async (type: string, context: AudioContex
         // Output with more stereo width
         dataLeft[i] = noise * env;
         dataRight[i] = (Math.random() * 2 - 1) * env * 0.6; // More stereo separation
-      }
-      break;
-    }
-    case "clap": {
-      // Completely redesigned clap sound that's distinct from snare
-      buffer = context.createBuffer(2, sampleRate * 0.5, sampleRate);
-      const dataLeft = buffer.getChannelData(0);
-      const dataRight = buffer.getChannelData(1);
-      
-      for (let i = 0; i < dataLeft.length; i++) {
-        const t = i / sampleRate;
-        let env = 0;
-        
-        // Create multiple "clap" transients with a different pattern than before
-        if (t < 0.001) env = t / 0.001;
-        else if (t < 0.006) env = 1 - (t - 0.001) / 0.005;
-        else if (t < 0.007) env = 0;
-        else if (t < 0.008) env = (t - 0.007) / 0.001;
-        else if (t < 0.015) env = 1 - (t - 0.008) / 0.007;
-        else if (t < 0.016) env = 0;
-        else if (t < 0.017) env = (t - 0.016) / 0.001;
-        else if (t < 0.025) env = 1 - (t - 0.017) / 0.008;
-        else if (t < 0.026) env = 0;
-        else if (t < 0.027) env = (t - 0.026) / 0.001;
-        
-        // Longer reverb-like decay
-        if (t >= 0.027) env = Math.exp(-(t - 0.027) * 12) * 0.9;
-        
-        // More focused band-limited noise for "hand" character
-        let noise = 0;
-        for (let j = 0; j < 12; j++) {
-          // Focus on higher frequencies than snare
-          noise += Math.sin(2 * Math.PI * (2000 + j * 600) * t * (1 + Math.random() * 0.1)) * 0.08;
-        }
-        noise += (Math.random() * 2 - 1) * 0.3;
-        
-        // Apply envelope and light compression
-        const signal = noise * env;
-        const compressed = signal * (1 - Math.max(0, signal - 0.7) * 0.4);
-        
-        // Wide stereo spreading for distinct clap character
-        dataLeft[i] = compressed * 0.95;
-        dataRight[i] = (Math.random() * 2 - 1) * env * 0.8; // Very wide stereo
       }
       break;
     }

@@ -8,6 +8,7 @@ export const useChordPlayer = (volume: number = 80) => {
   const audioContext = useRef<AudioContext | null>(null);
   const masterGainNode = useRef<GainNode | null>(null);
   const compressorNode = useRef<DynamicsCompressorNode | null>(null);
+  const activeOscillators = useRef<{ [key: string]: any[] }>({});
   
   // Initialize audio context with user interaction
   const initAudioContext = useCallback(() => {
@@ -43,10 +44,35 @@ export const useChordPlayer = (volume: number = 80) => {
   useEffect(() => {
     return () => {
       if (audioContext.current) {
+        // Stop all active oscillators
+        stopAllSounds();
+        
         audioContext.current.close();
         audioContext.current = null;
       }
     };
+  }, []);
+
+  // Stop all currently playing sounds
+  const stopAllSounds = useCallback(() => {
+    if (!audioContext.current) return;
+    
+    // Iterate through all active oscillators and stop them
+    Object.values(activeOscillators.current).forEach(oscillators => {
+      if (oscillators && oscillators.length) {
+        oscillators.forEach(osc => {
+          try {
+            if (osc.osc) osc.osc.stop();
+            if (osc.gainNode) osc.gainNode.disconnect();
+          } catch (e) {
+            // Ignore errors from already stopped oscillators
+          }
+        });
+      }
+    });
+    
+    // Reset the active oscillators dictionary
+    activeOscillators.current = {};
   }, []);
   
   // Play a chord with improved sound quality
@@ -56,6 +82,9 @@ export const useChordPlayer = (volume: number = 80) => {
     pattern: string = "Pop"
   ) => {
     try {
+      // Stop any previously playing sounds to avoid overlapping
+      stopAllSounds();
+      
       const context = initAudioContext();
       
       // Create master compressor for better mix if it doesn't exist
@@ -141,8 +170,14 @@ export const useChordPlayer = (volume: number = 80) => {
           intervals = [0, 4, 7, 12]; // Default to major chord intervals with octave
       }
       
+      // Store current chord's oscillators by instrument
+      activeOscillators.current = {};
+      
       // Create tones for each instrument with enhanced sound quality and spatial positioning
       instrumentsToUse.forEach((instrumentId, instrumentIndex) => {
+        // Initialize array for this instrument's oscillators
+        activeOscillators.current[instrumentId] = [];
+        
         // Adjust timing per instrument for more realistic ensemble feel
         const instrumentDelay = instrumentIndex * 0.005;
         
@@ -167,7 +202,7 @@ export const useChordPlayer = (volume: number = 80) => {
           // Different instruments get placed at different positions in the stereo field
           const instrumentPanPosition = getPanningForInstrument(instrumentId, instrumentsToUse.length);
           
-          createInstrumentTone(
+          const instrumentTone = createInstrumentTone(
             context, 
             frequency, 
             masterGainNode.current,
@@ -186,13 +221,18 @@ export const useChordPlayer = (volume: number = 80) => {
             noteDelay,
             volume * noteVolumeMultiplier
           );
+          
+          // Store the oscillator and gain node references
+          if (instrumentTone) {
+            activeOscillators.current[instrumentId].push(instrumentTone);
+          }
         });
       });
       
     } catch (error) {
       console.error("Error playing chord:", error);
     }
-  }, [initAudioContext, volume]);
+  }, [initAudioContext, volume, stopAllSounds]);
   
   // Helper function to intelligently place instruments across the stereo field
   const getPanningForInstrument = (instrumentId: string, totalInstruments: number): number => {
@@ -225,5 +265,5 @@ export const useChordPlayer = (volume: number = 80) => {
     }
   };
   
-  return { playChord, initAudioContext };
+  return { playChord, initAudioContext, stopAllSounds };
 };
