@@ -7,6 +7,15 @@ import { Play, Square } from "lucide-react";
 import { useDrumKeyboardControls } from "@/hooks/useDrumKeyboardControls";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { createEnhancedDrumSound } from "./audioUtilsForDrumMachine";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
+
 
 // Define drum sounds with enhanced options
 const DRUM_SOUNDS = [
@@ -14,8 +23,7 @@ const DRUM_SOUNDS = [
   { id: "snare", name: "Snare", color: "bg-blue-500" },
   { id: "hihat", name: "Hi-Hat", color: "bg-green-500" },
   { id: "clap", name: "Clap", color: "bg-yellow-500" },
-   { id: "tom", name: "Tom", color: "bg-purple-500" },              // Deep tom
-  { id: "ride", name: "Ride", color: "bg-cyan-500" },       // Metallic ride
+  { id: "tom", name: "Tom", color: "bg-purple-500" },              // Deep tom
   { id: "piano", name: "Key", color: "bg-pink-400" },            // Soft piano key
   { id: "synth", name: "Synth", color: "bg-indigo-400" },     // Sharp synth hit
 ];
@@ -213,7 +221,6 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
   const [bpm, setBpm] = useState(initialBpm);
   const [volume, setVolume] = useState(0.6);
   const [loadedPattern, setLoadedPattern] = useState("");
-  const [activeTab, setActiveTab] = useState("pattern");
   
   const audioContext = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
@@ -463,6 +470,24 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     playSound(soundId);
   };
   
+
+  
+const [open, setOpen] = useState(false);
+
+const drumPatterns = [
+  { name: "Basic Beat", key: "basic", color: "bg-blue-50 text-blue-700 hover:bg-blue-100" },
+  { name: "Rock Beat", key: "rock", color: "bg-red-50 text-red-700 hover:bg-red-100" },
+  { name: "Funk Groove", key: "funk", color: "bg-yellow-50 text-yellow-700 hover:bg-yellow-100" },
+  { name: "Hip-Hop Beat", key: "hiphop", color: "bg-green-50 text-green-700 hover:bg-green-100" },
+  { name: "Electro Beat", key: "electro", color: "bg-indigo-50 text-indigo-700 hover:bg-indigo-100" },
+  { name: "Jazz Rhythm", key: "jazz", color: "bg-purple-50 text-purple-700 hover:bg-purple-100" },
+  { name: "Latin Groove", key: "latin", color: "bg-pink-50 text-pink-700 hover:bg-pink-100" },
+  { name: "Reggae Rhythm", key: "reggae", color: "bg-emerald-50 text-emerald-700 hover:bg-emerald-100" },
+  { name: "Trap Beat", key: "trap", color: "bg-orange-50 text-orange-700 hover:bg-orange-100" },
+  { name: "Breakbeat", key: "breakbeat", color: "bg-lime-50 text-lime-700 hover:bg-lime-100" },
+  { name: "Dubstep Beat", key: "dubstep", color: "bg-teal-50 text-teal-700 hover:bg-teal-100" },
+];
+
   return (
     <Card className={`w-full ${className} transition-all duration-300`}>
       <CardHeader>
@@ -562,220 +587,71 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
             <Button 
               variant="outline" 
               onClick={clearPattern}
-              className="transition-all duration-200 hover:bg-destructive/10"
+              className="relative  px-4 py-2 rounded-lg text-white bg-gradient-to-r from-violet-600 to-purple-700 overflow-hidden hover:brightness-125 transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]"
             >
               Clear Pattern
             </Button>
             <Button 
-          size="lg" 
-          onClick={togglePlayback}
-          className={`w-full transition-all duration-300 ${playing ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90'} mb-6`}
-        >
-          {playing ? (
-            <><Square className="mr-2 h-4 w-4" /> Stop</>
-          ) : (
-            <><Play className="mr-2 h-4 w-4" /> Start</>
-          )}
-        </Button>
-            <Button 
+  size="lg"
+  onClick={togglePlayback}
+  className={`px-4 py-2 rounded-lg transition-all hover:scale-105 mb-6
+    ${
+      playing
+        ? 'bg-gradient-to-r from-red-500 to-red-700 text-white hover:brightness-110 '
+        : 'bg-gradient-to-r from-purple-500 to-violet-700 text-white animate-pulse hover:animate-none'
+    }`}
+>
+  {playing ? (
+    <>
+      <Square className="md:mr-2 h-4 w-4" /> Stop
+    </>
+  ) : (
+    <>
+      <Play className="md:mr-2 h-4 w-4" /> Start
+    </>
+  )}
+</Button>
+
+            {/* <Button 
               variant="outline" 
               onClick={() => loadPattern('basic')}
               className="transition-all duration-200 hover:bg-primary/10"
             >
               Basic Beat
-            </Button>
+            </Button> */}
+
+            <Dialog open={open} onOpenChange={setOpen}>
+  <DialogTrigger asChild>
+    <Button variant="outline" className="relative  px-4 py-2 rounded-lg text-white bg-gradient-to-r from-violet-600 to-purple-700 overflow-hidden hover:brightness-125 transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]" onClick={() => setOpen(true)}>Select Beat</Button>
+  </DialogTrigger>
+
+  <DialogContent className="sm:max-w-md">
+    <DialogHeader>
+      <DialogTitle>Select a Beat Pattern</DialogTitle>
+    </DialogHeader>
+
+    <div className="grid grid-cols-2 gap-2 mt-4">
+      {drumPatterns.map((pattern) => (
+        <Button
+          key={pattern.key}
+          onClick={() => {
+            loadPattern(pattern.key);
+            setOpen(false); // close modal after selection
+          }}
+          className={`w-full ${pattern.color} border border-muted shadow-sm`}
+          variant="outline"
+        >
+          {pattern.name}
+        </Button>
+      ))}
+    </div>
+  </DialogContent>
+</Dialog>
+
           </div>
         </div>
       </CardContent>
       
-      <CardFooter className="flex flex-col pt-6">
-        
-
-        <Tabs className="w-full" defaultValue="pattern" value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="w-full mb-4 grid grid-cols-3">
-            <TabsTrigger value="about">About</TabsTrigger>
-            <TabsTrigger value="pattern">Patterns</TabsTrigger>
-            <TabsTrigger value="tutorial">Tutorial</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="about">
-            <div className="prose dark:prose-invert">
-              <h3>About Drum Machine</h3>
-              <p>
-                The Drum Machine is a 16-step sequencer allowing you to create rhythm patterns with various drum sounds. 
-                It's designed to help musicians, producers, and enthusiasts experiment with different drum patterns.
-              </p>
-              <p>
-                This interactive tool enables you to:
-              </p>
-              <ul className="pl-6 list-disc space-y-1">
-                <li>Create custom drum patterns step by step</li>
-                <li>Play back patterns at different tempos</li>
-                <li>Load preset patterns for various musical styles</li>
-                <li>Adjust volume and individual sounds</li>
-                <li>Visualize the playback with step indicators</li>
-              </ul>
-              <p>
-                Whether you're creating beats for a song, learning about rhythm, or just having fun, the Drum Machine offers an intuitive interface for rhythm exploration.
-              </p>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="pattern">
-            <div>
-              <h3 className="text-lg font-medium mb-3">Preset Patterns</h3>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('basic')}
-                  className="transition-all duration-200"
-                >
-                  Basic Beat
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('rock')}
-                  className="transition-all duration-200"
-                >
-                  Rock Beat
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('funk')}
-                  className="transition-all duration-200"
-                >
-                  Funk Groove
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('hiphop')}
-                  className="transition-all duration-200"
-                >
-                  Hip-Hop Beat
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('electro')}
-                  className="transition-all duration-200"
-                >
-                  Electro Beat
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('jazz')}
-                  className="transition-all duration-200"
-                >
-                  Jazz Rhythm
-                </Button>
-                
-                {/* New patterns */}
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('latin')}
-                  className="transition-all duration-200"
-                >
-                  Latin Groove
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('reggae')}
-                  className="transition-all duration-200"
-                >
-                  Reggae Rhythm
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('trap')}
-                  className="transition-all duration-200"
-                >
-                  Trap Beat
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('breakbeat')}
-                  className="transition-all duration-200"
-                >
-                  Breakbeat
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => loadPattern('dubstep')}
-                  className="transition-all duration-200"
-                >
-                  Dubstep Beat
-                </Button>
-              </div>
-
-              <div className="mt-6">
-                <h3 className="text-lg font-medium mb-3">Keyboard Shortcuts</h3>
-                <div className="grid grid-cols-2 gap-y-2">
-                  <div className="text-sm">
-                    <span className="bg-secondary px-2 py-1 rounded mr-2 font-mono">Space</span>
-                    <span>Play/Stop</span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="bg-secondary px-2 py-1 rounded mr-2 font-mono">C</span>
-                    <span>Clear pattern</span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="bg-secondary px-2 py-1 rounded mr-2 font-mono">B</span>
-                    <span>Basic beat</span>
-                  </div>
-                  <div className="text-sm">
-                    <span className="bg-secondary px-2 py-1 rounded mr-2 font-mono">↑/↓</span>
-                    <span>Adjust tempo</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="tutorial">
-            <div className="prose dark:prose-invert">
-              <h3>Drum Machine Tutorial</h3>
-              
-              <div className="mb-4">
-                <h4>Getting Started</h4>
-                <p>
-                  The Drum Machine is organized as a grid where rows represent different drum sounds (Kick, Snare, Hi-Hat, Clap) 
-                  and columns represent time steps in the sequence.
-                </p>
-                <ol className="pl-6 list-decimal space-y-1">
-                  <li>Click on any cell in the grid to toggle a sound at that step</li>
-                  <li>Press the Start button to hear your pattern play</li>
-                  <li>Use the Tempo slider to adjust the playback speed</li>
-                </ol>
-              </div>
-              
-              <div className="mb-4">
-                <h4>Creating Patterns</h4>
-                <p>
-                  A standard drum pattern typically consists of:
-                </p>
-                <ul className="pl-6 list-disc space-y-1">
-                  <li>Kick drum on beats 1 and 3 (first and ninth step)</li>
-                  <li>Snare on beats 2 and 4 (fifth and thirteenth step)</li>
-                  <li>Hi-hat on every other step for a consistent rhythm</li>
-                </ul>
-                <p>
-                  Try loading the "Basic Beat" preset to see this pattern in action.
-                </p>
-              </div>
-              
-              <div>
-                <h4>Tips for Better Beats</h4>
-                <ul className="pl-6 list-disc space-y-1">
-                  <li>Start with a simple kick and snare pattern before adding hi-hats</li>
-                  <li>Remember that steps 1, 5, 9, and 13 represent the main beats in 4/4 time</li>
-                  <li>Use the clap sound sparingly for emphasis</li>
-                  <li>Experiment with different tempos to completely change the feel</li>
-                  <li>Try the various preset patterns to learn different musical styles</li>
-                </ul>
-              </div>
-            </div>
-          </TabsContent>
-        </Tabs>
-      </CardFooter>
     </Card>
   );
 };

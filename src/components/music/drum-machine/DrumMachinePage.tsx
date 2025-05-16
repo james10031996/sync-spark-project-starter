@@ -1,7 +1,10 @@
 
 import React from "react";
 import DrumMachine from "@/components/music/drum-machine/DrumMachine";
+import { DrumFooter } from "@/components/music/drum-machine/DrumFooter";
 import { motion } from "framer-motion";
+import { CardFooter } from "@/components/ui/card";
+
 
 const DrumMachinePage: React.FC = () => {
   return (
@@ -15,7 +18,9 @@ const DrumMachinePage: React.FC = () => {
           className="mt-4"
         >
           <DrumMachine />
-          
+          <CardFooter className="mt-6  border-2 border-black-500 rounded-xl flex flex-col px-0">
+  <DrumFooter />
+</CardFooter>
         </motion.div>
       </div>
     </div>

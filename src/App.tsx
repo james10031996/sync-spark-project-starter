@@ -6,7 +6,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
-import ChordPlayerPage from "./pages/ChordPlayerPage";
 import ChordProgressionPage from "./components/music/ChordProgressionPlayer/ChordProgressionPage";
 import DrumMachinePage from "./components/music/drum-machine/DrumMachinePage";
 
