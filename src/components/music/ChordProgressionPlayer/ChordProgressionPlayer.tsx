@@ -417,7 +417,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="absolute -right- top-5  rounded-full flex items-center text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                    className="absolute -right-3 top-5  rounded-full flex items-center text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
                     onClick={() => removeSection(sectionIndex)}
                   >
                     <Trash />

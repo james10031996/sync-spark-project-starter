@@ -7,7 +7,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ChordPlayerPage from "./pages/ChordPlayerPage";
-import ChordProgressionPage from "./pages/ChordProgressionPage";
+import ChordProgressionPage from "./components/music/ChordProgressionPlayer/ChordProgressionPage";
 import DrumMachinePage from "./components/music/drum-machine/DrumMachinePage";
 
 // Create a client with cache configuration for better performance
