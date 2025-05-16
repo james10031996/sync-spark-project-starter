@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import ChordPlayerPage from "./pages/ChordPlayerPage";
 import ChordProgressionPage from "./pages/ChordProgressionPage";
-import DrumMachinePage from "./pages/DrumMachinePage";
+import DrumMachinePage from "./components/music/drum-machine/DrumMachinePage";
 
 // Create a client with cache configuration for better performance
 const queryClient = new QueryClient({
@@ -27,7 +27,7 @@ const App = () => (
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <BrowserRouter>
+      <BrowserRouter> 
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/chord-player" element={<Navigate to="/chord-progression" replace />} />

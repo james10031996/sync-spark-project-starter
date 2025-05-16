@@ -8,7 +8,7 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { ChordInProgression, rootNotes, chordTypes } from "@/components/music/types/chordTypes";
+import { ChordInProgression, rootNotes, chordTypes } from "@/components/music/ChordProgressionPlayer/types/chordTypes";
 
 interface ChordBlockProps {
   chord: ChordInProgression;
@@ -35,7 +35,7 @@ export const ChordBlock: React.FC<ChordBlockProps> = ({
   return (
     <Card 
       className={`
-        w-24 h-24 cursor-pointer transition-all duration-300
+        md:w-24 md:h-24 w-20 h-20 cursor-pointer transition-all duration-300
         ${isActive 
           ? 'bg-primary/20 scale-105 shadow-lg border-primary/30' 
           : 'hover:bg-accent hover:scale-[1.03]'}

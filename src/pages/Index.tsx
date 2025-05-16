@@ -40,11 +40,10 @@ const Index = () => {
           Interactive music tools for playing and creating music
         </motion.p>
         
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-3 gap-4 w-full max-w-xl mx-auto">
           {[
             { name: "Chord Progression", path: "/chord-progression", delay: 0.7 },
             { name: "Drum Machine", path: "/drum-machine", delay: 0.8 },
-            { name: "Metronome", path: "/metronome", delay: 0.9 }
           ].map((tool, index) => (
             <Link key={tool.path} to={tool.path}>
               <motion.div

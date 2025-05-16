@@ -1,8 +1,11 @@
 
 import React from "react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import ChordProgressionPlayer from "@/components/music/ChordProgressionPlayer";
+import ChordProgressionPlayer from "@/components/music/ChordProgressionPlayer/ChordProgressionPlayer";
 import { motion } from "framer-motion";
+import { ChordProgressionFooter } from "@/components/music/ChordProgressionPlayer/ChordProgressionFooter";
+import { CardFooter } from "@/components/ui/card";
+
 
 const ChordProgressionPage: React.FC = () => {
   return (
@@ -23,6 +26,11 @@ const ChordProgressionPage: React.FC = () => {
           transition={{ duration: 0.7, delay: 0.4 }}
         >
           <ChordProgressionPlayer />
+<CardFooter className="border-2 border-black-500 rounded-xl flex flex-col px-0">
+  <ChordProgressionFooter className="p-6"/>
+</CardFooter>
+
+
         </motion.div>
       </div>
     </div>

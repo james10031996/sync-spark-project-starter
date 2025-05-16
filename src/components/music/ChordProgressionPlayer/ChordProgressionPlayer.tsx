@@ -6,18 +6,17 @@ import { Play, Music, Plus, Trash } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChordSection } from "@/components/music/ChordSection";
+import { ChordSection } from "@/components/music/ChordProgressionPlayer/ChordSection";
 import { toast } from "@/hooks/use-toast";
 import { Slider } from "@/components/ui/slider";
-import { ChordProgressionFooter } from "@/components/music/ChordProgressionFooter";
-import { useChordPlayer } from "@/components/music/hooks/useChordPlayer";
+import { useChordPlayer } from "@/components/music/ChordProgressionPlayer/hooks/useChordPlayer";
 import { 
   ChordInProgression, 
-  ChordSectionData, 
+  ChordSectionData,   
   availableInstruments, 
   rootNotes,
   chordTypes
-} from "@/components/music/types/chordTypes";
+} from "@/components/music/ChordProgressionPlayer/types/chordTypes";
 
 interface ChordProgressionPlayerProps {
   className?: string;
@@ -418,11 +417,11 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
                   <Button 
                     variant="outline" 
                     size="sm"
-                    className="absolute top-0 right-0 flex items-center text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
+                    className="absolute -right- top-5  rounded-full flex items-center text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30"
                     onClick={() => removeSection(sectionIndex)}
                   >
-                    <Trash className="h-4 w-4 mr-1" />
-                    Remove
+                    <Trash />
+                    {/* Remove */}
                   </Button>
                 )}
               </div>
@@ -456,9 +455,7 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
           </div>
         </CardContent>
 
-        <CardFooter className="flex flex-col pt-6 px-0">
-          <ChordProgressionFooter />
-        </CardFooter>
+        
       </Card>
     </div>
   );

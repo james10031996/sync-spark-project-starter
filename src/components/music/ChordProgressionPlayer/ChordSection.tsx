@@ -1,15 +1,15 @@
 
 import React, { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChordBlock } from "@/components/music/ChordBlock";
+import { ChordBlock } from "@/components/music/ChordProgressionPlayer/ChordBlock";
 import { Plus, Trash, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ChordInProgression, ChordSectionData } from "@/components/music/types/chordTypes";
+import { ChordInProgression, ChordSectionData } from "@/components/music/ChordProgressionPlayer/types/chordTypes";
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
   DropdownMenuItem,
-  DropdownMenuLabel,
+  DropdownMenuLabel, 
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuGroup
@@ -79,7 +79,8 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
         {sectionIndex + 1} {sectionRepeat > 1 && `(x${sectionRepeat})`}
       </div>
       
-      <div className="flex justify-between mb-3">
+      <div className="mb-3 grid grid-cols-1 md:grid-cols-2">
+        <div>
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
@@ -97,8 +98,10 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
+        </div>
         
-        <div className="flex items-center gap-2">
+        <div className="">
+<div className="flex items-center space-x-2 mr-3">
           <Label className="text-sm">Repeats:</Label>
           <Select 
             value={sectionRepeat.toString()} 
@@ -112,45 +115,13 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
                 <SelectItem key={num} value={num.toString()}>{num}</SelectItem>
               ))}
             </SelectContent>
-          </Select>
-          
-          <DropdownMenu open={showMenu} onOpenChange={setShowMenu}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                ⋮
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel>Section {sectionIndex + 1} Settings</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              
-              {Object.entries(instrumentsByType).map(([type, instruments]) => (
-                <DropdownMenuGroup key={type}>
-                  <DropdownMenuLabel className="text-xs">{type.charAt(0).toUpperCase() + type.slice(1)}</DropdownMenuLabel>
-                  {Object.entries(instruments).map(([id, { name }]) => (
-                    <DropdownMenuItem 
-                      key={id}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleSectionInstrument(id);
-                      }}
-                      className={isInstrumentActive(id) ? "bg-primary/20" : ""}
-                    >
-                      {isInstrumentActive(id) ? "✓ " : ""}{name}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuGroup>
-              ))}
-              
-              <DropdownMenuSeparator />
-              <DropdownMenuItem 
-                onClick={onRemoveSection}
-                className="text-destructive focus:text-destructive"
-              >
-                <Trash className="mr-2 h-4 w-4" /> Remove Section
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          </Select></div>
+          {/* <div>
+          <Button onClick={onRemoveSection}
+                className="ml-5 text-destructive focus:text-destructive"
+                variant="outline" size="sm">
+                <Trash className="mr-2 h-4 w-4" /> Remove
+</Button>     </div> */}
         </div>
       </div>
       
@@ -166,7 +137,7 @@ export const ChordSection: React.FC<ChordSectionProps> = ({
         ))}
         
         {section.chords.length < 8 && (
-          <Button 
+          <Button  
             variant="ghost" 
             className="border-2 border-dashed border-muted-foreground/20 h-24 w-24 flex items-center justify-center hover:border-primary/30 hover:bg-primary/5 transition-all duration-200"
             onClick={onAddChord}

@@ -1,7 +1,7 @@
 
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import ChordPlayer from "@/components/music/ChordPlayer";
+import ChordPlayer from "@/components/music/ChordProgressionPlayer/ChordPlayer";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -24,7 +24,7 @@ const ChordPlayerPage: React.FC = () => {
           <h1 className="text-3xl font-bold">Chord Player</h1>
           <Link to="/">
             <Button variant="outline">Back to Home</Button>
-          </Link>
+          </Link> 
         </header>
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -137,3 +137,4 @@ const ChordPlayerPage: React.FC = () => {
 };
 
 export default ChordPlayerPage;
+ 

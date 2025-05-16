@@ -6,14 +6,18 @@ import { Label } from "@/components/ui/label";
 import { Play, Square } from "lucide-react";
 import { useDrumKeyboardControls } from "@/hooks/useDrumKeyboardControls";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { createEnhancedDrumSound } from "./utils/audioUtils";
+import { createEnhancedDrumSound } from "./audioUtilsForDrumMachine";
 
 // Define drum sounds with enhanced options
 const DRUM_SOUNDS = [
   { id: "kick", name: "Kick", color: "bg-red-500" },
   { id: "snare", name: "Snare", color: "bg-blue-500" },
   { id: "hihat", name: "Hi-Hat", color: "bg-green-500" },
-  { id: "clap", name: "Clap", color: "bg-yellow-500" }
+  { id: "clap", name: "Clap", color: "bg-yellow-500" },
+   { id: "tom", name: "Tom", color: "bg-purple-500" },              // Deep tom
+  { id: "ride", name: "Ride", color: "bg-cyan-500" },       // Metallic ride
+  { id: "piano", name: "Key", color: "bg-pink-400" },            // Soft piano key
+  { id: "synth", name: "Synth", color: "bg-indigo-400" },     // Sharp synth hit
 ];
 
 // Number of steps in the sequencer
@@ -30,36 +34,61 @@ const DRUM_PATTERNS = {
     [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], // kick
     [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // snare
     [true, false, true, false, true, false, true, false, true, false, true, false, true, false, true, false], // hihat
-    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true] // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, true], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ],
   rock: [
     [true, false, false, false, false, false, true, false, true, false, false, false, false, false, true, false], // kick
     [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // snare
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true], // hihat
-    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false] // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, false], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
+  
   ],
   funk: [
     [true, false, false, true, false, false, true, false, false, false, true, false, false, true, false, false], // kick
     [false, false, true, false, false, false, false, false, true, false, false, false, false, false, true, false], // snare
     [true, false, true, false, true, true, true, false, true, false, true, false, true, true, true, false], // hihat
-    [false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, true] // clap
+    [false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, true], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ],
   hiphop: [
     [true, false, false, false, false, false, false, false, true, false, false, false, false, true, false, false], // kick
     [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // snare
     [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], // hihat
-    [false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false] // clap
+    [false, false, false, false, false, false, false, true, false, false, false, false, false, false, false, false], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ],
   electro: [
     [true, false, false, false, false, false, true, false, true, false, false, false, false, false, true, false], // kick
     [false, false, false, false, true, false, false, false, false, false, false, true, true, false, false, false], // snare
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true], // hihat
-    [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true] // clap
+    [false, true, false, true, false, true, false, true, false, true, false, true, false, true, false, true], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ],
   jazz: [
     [true, false, false, false, false, false, true, false, false, false, true, false, false, false, false, false], // kick
     [false, false, true, false, true, false, false, false, true, false, false, false, true, false, true, false], // snare
     [true, true, false, true, true, true, false, true, true, true, false, true, true, true, false, true], // hihat
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ],
   // New patterns
@@ -67,31 +96,51 @@ const DRUM_PATTERNS = {
     [true, false, false, false, true, false, true, false, true, false, false, false, true, false, true, false], // kick
     [false, false, false, false, false, true, false, false, false, false, false, false, false, true, false, false], // snare
     [false, true, true, true, false, true, true, true, false, true, true, true, false, true, true, true], // hihat
-    [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] // clap
+    [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ],
   reggae: [
     [true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false], // kick
     [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // snare
     [false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true], // hihat
-    [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] // clap
+    [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ],
   trap: [
     [true, false, false, false, false, false, false, true, false, false, true, false, false, false, false, false], // kick
     [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // snare
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true], // hihat (fast)
-    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true] // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ],
   breakbeat: [
     [true, false, false, false, false, true, false, false, true, false, false, false, false, true, true, false], // kick
     [false, false, true, false, true, false, false, true, false, false, true, false, true, false, false, false], // snare
     [true, false, true, true, false, true, true, false, true, false, true, true, false, true, true, false], // hihat
-    [false, true, false, false, false, false, false, false, false, true, false, false, false, false, false, true] // clap
+    [false, true, false, false, false, false, false, false, false, true, false, false, false, false, false, true], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ],
   dubstep: [
     [true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, true], // kick
     [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // snare
     [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true], // hihat
-    [false, false, false, false, false, false, true, false, false, false, false, false, false, false, true, false] // clap
+    [false, false, false, false, false, false, true, false, false, false, false, false, false, false, true, false], // clap
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //tom
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
   ]
 };
 
@@ -275,7 +324,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     if (audioContext.current?.state === 'suspended') {
       await audioContext.current.resume();
     }
-    
+     
     setPlaying(true);
     setCurrentStep(-1);
     
@@ -509,7 +558,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
             />
           </div>
           
-          <div className="grid grid-cols-2 gap-2 mt-4">
+          <div className="grid grid-cols-3 gap-2 mt-4">
             <Button 
               variant="outline" 
               onClick={clearPattern}
@@ -517,6 +566,17 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
             >
               Clear Pattern
             </Button>
+            <Button 
+          size="lg" 
+          onClick={togglePlayback}
+          className={`w-full transition-all duration-300 ${playing ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90'} mb-6`}
+        >
+          {playing ? (
+            <><Square className="mr-2 h-4 w-4" /> Stop</>
+          ) : (
+            <><Play className="mr-2 h-4 w-4" /> Start</>
+          )}
+        </Button>
             <Button 
               variant="outline" 
               onClick={() => loadPattern('basic')}
@@ -529,17 +589,7 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
       </CardContent>
       
       <CardFooter className="flex flex-col pt-6">
-        <Button 
-          size="lg" 
-          onClick={togglePlayback}
-          className={`w-full transition-all duration-300 ${playing ? 'bg-destructive hover:bg-destructive/90' : 'bg-primary hover:bg-primary/90'} mb-6`}
-        >
-          {playing ? (
-            <><Square className="mr-2 h-4 w-4" /> Stop</>
-          ) : (
-            <><Play className="mr-2 h-4 w-4" /> Start</>
-          )}
-        </Button>
+        
 
         <Tabs className="w-full" defaultValue="pattern" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="w-full mb-4 grid grid-cols-3">
