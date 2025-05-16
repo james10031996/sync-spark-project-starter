@@ -111,19 +111,23 @@ export const useChordPlayer = (volume: number = 80) => {
         const instrumentSettings = getInstrumentSettings(instrumentId, pattern);
         
         // Create tones for each note in the chord with slight timing variations for realism
-        intervals.forEach((interval, noteIndex) => {
-          const noteIndex = (rootIndex + interval) % 12;
+        intervals.forEach((interval, index) => {
+          const adjustedNoteIndex = (rootIndex + interval) % 12;
           const octaveOffset = Math.floor((rootIndex + interval) / 12);
-          const note = rootNotes[noteIndex];
+          const note = rootNotes[adjustedNoteIndex];
           
           // Calculate frequency using scientific pitch notation
           const frequency = getNoteFrequency(note, instrumentSettings.octave + octaveOffset);
           
           // Small timing variation for natural feel - different for each note and instrument
-          const noteDelay = instrumentDelay + (noteIndex * 0.012) + (Math.random() * 0.005);
+          const noteDelay = instrumentDelay + (index * 0.012) + (Math.random() * 0.005);
           
           // Add slight velocity variation based on note position in chord
           const noteVolumeMultiplier = interval === 0 ? 1.0 : (interval === intervals[1] ? 0.92 : 0.85);
+          
+          // Enhanced spatial positioning for better instrument separation
+          // Different instruments get placed at different positions in the stereo field
+          const instrumentPanPosition = getPanningForInstrument(instrumentId, instrumentsToUse.length);
           
           createInstrumentTone(
             context, 
@@ -139,7 +143,7 @@ export const useChordPlayer = (volume: number = 80) => {
                   instrumentSettings.attack * 0.8 : 
                   instrumentSettings.attack,
               // Adjust panning based on note position for width
-              panning: instrumentSettings.panning + ((noteIndex % 3) * 0.05 - 0.05)
+              panning: instrumentPanPosition + ((index % 3) * 0.05 - 0.05)
             },
             noteDelay,
             volume * noteVolumeMultiplier
@@ -149,6 +153,37 @@ export const useChordPlayer = (volume: number = 80) => {
       
     } catch (error) {
       console.error("Error playing chord:", error);
+    }
+  };
+  
+  // Helper function to intelligently place instruments across the stereo field
+  const getPanningForInstrument = (instrumentId: string, totalInstruments: number): number => {
+    // Define ideal positions for instruments when used together
+    // This creates better stereo separation between instruments
+    
+    if (totalInstruments <= 1) {
+      // If only one instrument, center it
+      return 0;
+    }
+
+    // Different panning strategies for different numbers of instruments
+    switch (instrumentId) {
+      case "piano":
+        return -0.15;
+      case "acousticGuitar":
+        return 0.25;
+      case "electricGuitar":
+        return 0.4;
+      case "bass":
+        return -0.05; // Bass mostly centered but slightly left
+      case "strings":
+        return -0.3;
+      case "synth":
+        return 0.3;
+      case "organ":
+        return 0.1;
+      default:
+        return 0;
     }
   };
   

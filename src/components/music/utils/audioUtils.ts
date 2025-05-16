@@ -147,6 +147,18 @@ export const createInstrumentTone = (
     osc.detune.value = settings.detune;
   }
   
+  // Add EQ for better frequency separation between instruments
+  const eqLow = context.createBiquadFilter();
+  const eqMid = context.createBiquadFilter();
+  const eqHigh = context.createBiquadFilter();
+  
+  eqLow.type = "lowshelf";
+  eqMid.type = "peaking";
+  eqHigh.type = "highshelf";
+  
+  // Set EQ parameters based on instrument type for better separation
+  applyInstrumentEQ(instrumentId, eqLow, eqMid, eqHigh);
+  
   // Volume adjustment based on instrument for better balance and clarity
   const instrumentVolume = getInstrumentVolume(instrumentId) * (volume / 100);
   
@@ -161,9 +173,12 @@ export const createInstrumentTone = (
   gainNode.gain.setValueAtTime(instrumentVolume * settings.sustain, now + delay + attackTime + decayTime);
   gainNode.gain.exponentialRampToValueAtTime(0.0001, now + delay + attackTime + decayTime + releaseTime);
   
-  // Connect nodes with improved routing
+  // Connect nodes with improved routing including EQ
   osc.connect(filter);
-  filter.connect(panner);
+  filter.connect(eqLow);
+  eqLow.connect(eqMid);
+  eqMid.connect(eqHigh);
+  eqHigh.connect(panner);
   panner.connect(gainNode);
   
   // Add enhanced effects based on instrument type
@@ -295,6 +310,103 @@ export const createInstrumentTone = (
   osc.stop(now + delay + attackTime + decayTime + releaseTime + 0.1);
   
   return { osc, gainNode }; // Return for potential cleanup
+};
+
+// New function to apply instrument-specific EQ for better separation
+const applyInstrumentEQ = (
+  instrumentId: string,
+  lowEQ: BiquadFilterNode,
+  midEQ: BiquadFilterNode,
+  highEQ: BiquadFilterNode
+) => {
+  switch (instrumentId) {
+    case "piano":
+      // Piano - boost mids slightly, cut very low and very high
+      lowEQ.frequency.value = 250;
+      lowEQ.gain.value = -2;
+      midEQ.frequency.value = 800;
+      midEQ.Q.value = 1;
+      midEQ.gain.value = 3;
+      highEQ.frequency.value = 6000;
+      highEQ.gain.value = -1;
+      break;
+      
+    case "acousticGuitar":
+      // Acoustic guitar - boost high mids for clarity
+      lowEQ.frequency.value = 150;
+      lowEQ.gain.value = -1;
+      midEQ.frequency.value = 1200;
+      midEQ.Q.value = 1.2;
+      midEQ.gain.value = 4;
+      highEQ.frequency.value = 5000;
+      highEQ.gain.value = 2;
+      break;
+      
+    case "electricGuitar":
+      // Electric guitar - boost mid range
+      lowEQ.frequency.value = 200;
+      lowEQ.gain.value = -3;
+      midEQ.frequency.value = 1800;
+      midEQ.Q.value = 1.5;
+      midEQ.gain.value = 5;
+      highEQ.frequency.value = 4500;
+      highEQ.gain.value = 1;
+      break;
+      
+    case "bass":
+      // Bass - boost lows, cut highs
+      lowEQ.frequency.value = 80;
+      lowEQ.gain.value = 5;
+      midEQ.frequency.value = 400;
+      midEQ.Q.value = 0.8;
+      midEQ.gain.value = -2;
+      highEQ.frequency.value = 2000;
+      highEQ.gain.value = -6;
+      break;
+      
+    case "strings":
+      // Strings - smooth mids, boost highs for air
+      lowEQ.frequency.value = 300;
+      lowEQ.gain.value = -1;
+      midEQ.frequency.value = 900;
+      midEQ.Q.value = 0.7;
+      midEQ.gain.value = 2;
+      highEQ.frequency.value = 7000;
+      highEQ.gain.value = 3;
+      break;
+      
+    case "synth":
+      // Synth - boost low and high for presence
+      lowEQ.frequency.value = 150;
+      lowEQ.gain.value = 3;
+      midEQ.frequency.value = 1000;
+      midEQ.Q.value = 2;
+      midEQ.gain.value = -2;
+      highEQ.frequency.value = 5000;
+      highEQ.gain.value = 4;
+      break;
+      
+    case "organ":
+      // Organ - boost low mids and high mids
+      lowEQ.frequency.value = 200;
+      lowEQ.gain.value = 2;
+      midEQ.frequency.value = 1500;
+      midEQ.Q.value = 2;
+      midEQ.gain.value = 4;
+      highEQ.frequency.value = 6000;
+      highEQ.gain.value = -1;
+      break;
+      
+    default:
+      // Default neutral EQ
+      lowEQ.frequency.value = 200;
+      lowEQ.gain.value = 0;
+      midEQ.frequency.value = 1000;
+      midEQ.Q.value = 1;
+      midEQ.gain.value = 0;
+      highEQ.frequency.value = 5000;
+      highEQ.gain.value = 0;
+  }
 };
 
 // Get instrument-specific volume balance with improved levels
