@@ -1,4 +1,3 @@
-
 /**
  * Audio utility functions for the music components
  */
@@ -453,4 +452,168 @@ export const getNoteFrequency = (note: string, octave: number): number => {
   const a4Index = rootNotes.indexOf("A") + (4 * 12);
   const noteFullIndex = noteIndex + (octave * 12);
   return 440 * Math.pow(2, (noteFullIndex - a4Index) / 12);
+};
+
+// Enhanced drum sound generation functions
+export const createEnhancedDrumSound = async (type: string, context: AudioContext): Promise<AudioBuffer> => {
+  // Create a buffer for the sound
+  let buffer: AudioBuffer;
+  const sampleRate = context.sampleRate;
+  
+  switch (type) {
+    case "kick": {
+      // Enhanced kick drum with deeper sub frequencies and better punch
+      buffer = context.createBuffer(2, sampleRate * 0.6, sampleRate);
+      const dataLeft = buffer.getChannelData(0);
+      const dataRight = buffer.getChannelData(1);
+      
+      for (let i = 0; i < dataLeft.length; i++) {
+        const t = i / sampleRate;
+        
+        // Main frequency sweep (deeper than before)
+        const frequency = 60 * Math.exp(-20 * t);
+        
+        // Add stronger punch at the start
+        const punchEnv = Math.exp(-150 * t);
+        const punch = Math.sin(2 * Math.PI * 220 * t) * punchEnv * 0.7;
+        
+        // Enhanced sub bass
+        const subFreq = 40 * Math.exp(-12 * t);
+        const sub = Math.sin(2 * Math.PI * subFreq * t) * 0.85;
+        
+        const mainSound = Math.sin(2 * Math.PI * frequency * t) * Math.exp(-12 * t);
+        
+        // Combine components with better ratios
+        const combined = mainSound * 0.7 + punch * 0.35 + sub * 0.5;
+        
+        // Apply stronger attack envelope
+        const env = Math.exp(-7 * t);
+        
+        // Add subtle stereo variation for dimension
+        dataLeft[i] = combined * env;
+        dataRight[i] = combined * env * 0.98;
+      }
+      break;
+    }
+    case "snare": {
+      // Completely redesigned snare with more snap and body
+      buffer = context.createBuffer(2, sampleRate * 0.4, sampleRate);
+      const dataLeft = buffer.getChannelData(0);
+      const dataRight = buffer.getChannelData(1);
+      
+      for (let i = 0; i < dataLeft.length; i++) {
+        const t = i / sampleRate;
+        
+        // Snappy transient attack
+        const snapEnv = Math.exp(-180 * t);
+        const snap = (Math.random() * 2 - 1) * snapEnv * 0.8;
+        
+        // Body component (tone)
+        const toneEnv = Math.exp(-25 * t);
+        const tone1 = Math.sin(2 * Math.PI * 230 * t) * toneEnv * 0.4;
+        const tone2 = Math.sin(2 * Math.PI * 460 * t) * toneEnv * 0.3;
+        
+        // Noise component with better filtering
+        const noise = (Math.random() * 2 - 1);
+        const noiseHP = noise - (Math.random() * 2 - 1) * 0.3;
+        const noiseEnv = Math.exp(-t * 15);
+        
+        // Combine components with better balance for snare character
+        dataLeft[i] = snap * 0.6 + (tone1 + tone2) * 0.4 + noiseHP * noiseEnv * 0.6;
+        
+        // Slight stereo variation for width
+        dataRight[i] = snap * 0.58 + (tone1 * 0.95 + tone2 * 1.05) * 0.4 + 
+          noiseHP * noiseEnv * 0.62 * (1 + (Math.random() * 0.06 - 0.03));
+      }
+      break;
+    }
+    case "hihat": {
+      // Enhanced hi-hat with more sizzle
+      buffer = context.createBuffer(2, sampleRate * 0.2, sampleRate);
+      const dataLeft = buffer.getChannelData(0);
+      const dataRight = buffer.getChannelData(1);
+      
+      // Create a better filtered noise
+      for (let i = 0; i < dataLeft.length; i++) {
+        const t = i / sampleRate;
+        
+        // Generate metallic noise with more harmonics
+        let noise = 0;
+        // Add multiple frequency bands for a more metallic sound
+        for (let j = 0; j < 8; j++) {
+          const freq = 7500 + j * 1500; // Higher frequencies for more sizzle
+          noise += Math.sin(2 * Math.PI * freq * t + Math.random() * 0.3) * 0.08;
+        }
+        
+        // Add more white noise
+        noise += (Math.random() * 2 - 1) * 0.6;
+        
+        // Apply snappier envelope
+        const env = Math.exp(-t * (t < 0.003 ? 30 : 100));
+        
+        // Output with more stereo width
+        dataLeft[i] = noise * env;
+        dataRight[i] = (Math.random() * 2 - 1) * env * 0.6; // More stereo separation
+      }
+      break;
+    }
+    case "clap": {
+      // Completely redesigned clap sound that's distinct from snare
+      buffer = context.createBuffer(2, sampleRate * 0.5, sampleRate);
+      const dataLeft = buffer.getChannelData(0);
+      const dataRight = buffer.getChannelData(1);
+      
+      for (let i = 0; i < dataLeft.length; i++) {
+        const t = i / sampleRate;
+        let env = 0;
+        
+        // Create multiple "clap" transients with a different pattern than before
+        if (t < 0.001) env = t / 0.001;
+        else if (t < 0.006) env = 1 - (t - 0.001) / 0.005;
+        else if (t < 0.007) env = 0;
+        else if (t < 0.008) env = (t - 0.007) / 0.001;
+        else if (t < 0.015) env = 1 - (t - 0.008) / 0.007;
+        else if (t < 0.016) env = 0;
+        else if (t < 0.017) env = (t - 0.016) / 0.001;
+        else if (t < 0.025) env = 1 - (t - 0.017) / 0.008;
+        else if (t < 0.026) env = 0;
+        else if (t < 0.027) env = (t - 0.026) / 0.001;
+        
+        // Longer reverb-like decay
+        if (t >= 0.027) env = Math.exp(-(t - 0.027) * 12) * 0.9;
+        
+        // More focused band-limited noise for "hand" character
+        let noise = 0;
+        for (let j = 0; j < 12; j++) {
+          // Focus on higher frequencies than snare
+          noise += Math.sin(2 * Math.PI * (2000 + j * 600) * t * (1 + Math.random() * 0.1)) * 0.08;
+        }
+        noise += (Math.random() * 2 - 1) * 0.3;
+        
+        // Apply envelope and light compression
+        const signal = noise * env;
+        const compressed = signal * (1 - Math.max(0, signal - 0.7) * 0.4);
+        
+        // Wide stereo spreading for distinct clap character
+        dataLeft[i] = compressed * 0.95;
+        dataRight[i] = (Math.random() * 2 - 1) * env * 0.8; // Very wide stereo
+      }
+      break;
+    }
+    default: {
+      // Default to a simple tone
+      buffer = context.createBuffer(2, sampleRate * 0.2, sampleRate);
+      const dataLeft = buffer.getChannelData(0);
+      const dataRight = buffer.getChannelData(1);
+      
+      for (let i = 0; i < dataLeft.length; i++) {
+        const t = i / sampleRate;
+        const signal = Math.sin(2 * Math.PI * 440 * t) * Math.exp(-10 * t);
+        dataLeft[i] = signal;
+        dataRight[i] = signal;
+      }
+    }
+  }
+  
+  return buffer;
 };

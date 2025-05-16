@@ -1,22 +1,56 @@
 
-import { useRef, useState } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { ChordInProgression } from "../types/chordTypes";
 import { createInstrumentTone, getInstrumentSettings, getNoteFrequency } from "../utils/audioUtils";
 import { rootNotes } from "../types/chordTypes";
 
 export const useChordPlayer = (volume: number = 80) => {
   const audioContext = useRef<AudioContext | null>(null);
+  const masterGainNode = useRef<GainNode | null>(null);
+  const compressorNode = useRef<DynamicsCompressorNode | null>(null);
   
   // Initialize audio context with user interaction
-  const initAudioContext = () => {
+  const initAudioContext = useCallback(() => {
     if (!audioContext.current) {
       audioContext.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Create master compressor for better mix
+      compressorNode.current = audioContext.current.createDynamicsCompressor();
+      compressorNode.current.threshold.value = -24;
+      compressorNode.current.knee.value = 30;
+      compressorNode.current.ratio.value = 12;
+      compressorNode.current.attack.value = 0.003;
+      compressorNode.current.release.value = 0.25;
+      
+      // Create master gain node
+      masterGainNode.current = audioContext.current.createGain();
+      masterGainNode.current.gain.value = 1.0;
+      
+      // Setup the audio routing
+      masterGainNode.current.connect(compressorNode.current);
+      compressorNode.current.connect(audioContext.current.destination);
     }
+    
+    // Resume audioContext if it was suspended (needed for Chrome)
+    if (audioContext.current.state === 'suspended') {
+      audioContext.current.resume();
+    }
+    
     return audioContext.current;
-  };
+  }, []);
+  
+  // Clean up audio context when component unmounts
+  useEffect(() => {
+    return () => {
+      if (audioContext.current) {
+        audioContext.current.close();
+        audioContext.current = null;
+      }
+    };
+  }, []);
   
   // Play a chord with improved sound quality
-  const playChord = (
+  const playChord = useCallback((
     chord: ChordInProgression, 
     instrumentsToUse: string[], 
     pattern: string = "Pop"
@@ -24,17 +58,23 @@ export const useChordPlayer = (volume: number = 80) => {
     try {
       const context = initAudioContext();
       
-      // Create master compressor for better mix
-      const compressor = context.createDynamicsCompressor();
-      compressor.threshold.value = -24;
-      compressor.knee.value = 30;
-      compressor.ratio.value = 12;
-      compressor.attack.value = 0.003;
-      compressor.release.value = 0.25;
+      // Create master compressor for better mix if it doesn't exist
+      if (!compressorNode.current) {
+        compressorNode.current = context.createDynamicsCompressor();
+        compressorNode.current.threshold.value = -24;
+        compressorNode.current.knee.value = 30;
+        compressorNode.current.ratio.value = 12;
+        compressorNode.current.attack.value = 0.003;
+        compressorNode.current.release.value = 0.25;
+      }
       
-      // Create master gain node
-      const masterGain = context.createGain();
-      masterGain.gain.value = 1.0;
+      // Create master gain node if it doesn't exist
+      if (!masterGainNode.current) {
+        masterGainNode.current = context.createGain();
+        masterGainNode.current.gain.value = 1.0;
+        masterGainNode.current.connect(compressorNode.current);
+        compressorNode.current.connect(context.destination);
+      }
       
       // Add a subtle reverb to the master output for overall space
       const masterReverb = context.createConvolver();
@@ -58,11 +98,9 @@ export const useChordPlayer = (volume: number = 80) => {
       masterReverbGain.gain.value = 0.1; // Subtle reverb
       
       // Connect master chain with split for dry/wet reverb
-      masterGain.connect(compressor);
-      masterGain.connect(masterReverb);
+      masterGainNode.current.connect(masterReverb);
       masterReverb.connect(masterReverbGain);
-      masterReverbGain.connect(compressor);
-      compressor.connect(context.destination);
+      masterReverbGain.connect(compressorNode.current);
       
       if (instrumentsToUse.length === 0) {
         // If no instruments are selected, default to piano
@@ -132,7 +170,7 @@ export const useChordPlayer = (volume: number = 80) => {
           createInstrumentTone(
             context, 
             frequency, 
-            masterGain,
+            masterGainNode.current,
             instrumentId,
             {
               ...instrumentSettings,
@@ -154,7 +192,7 @@ export const useChordPlayer = (volume: number = 80) => {
     } catch (error) {
       console.error("Error playing chord:", error);
     }
-  };
+  }, [initAudioContext, volume]);
   
   // Helper function to intelligently place instruments across the stereo field
   const getPanningForInstrument = (instrumentId: string, totalInstruments: number): number => {

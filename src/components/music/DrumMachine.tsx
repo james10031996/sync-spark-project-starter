@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -7,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Play, Square } from "lucide-react";
 import { useDrumKeyboardControls } from "@/hooks/useDrumKeyboardControls";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { createEnhancedDrumSound } from "./utils/audioUtils";
 
 // Define drum sounds with enhanced options
 const DRUM_SOUNDS = [
@@ -24,7 +24,7 @@ const createEmptyPattern = () => {
   return DRUM_SOUNDS.map(sound => Array(STEPS).fill(false));
 };
 
-// Predefined patterns
+// Expanded predefined patterns
 const DRUM_PATTERNS = {
   basic: [
     [true, false, false, false, true, false, false, false, true, false, false, false, true, false, false, false], // kick
@@ -61,6 +61,37 @@ const DRUM_PATTERNS = {
     [false, false, true, false, true, false, false, false, true, false, false, false, true, false, true, false], // snare
     [true, true, false, true, true, true, false, true, true, true, false, true, true, true, false, true], // hihat
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
+  ],
+  // New patterns
+  latin: [
+    [true, false, false, false, true, false, true, false, true, false, false, false, true, false, true, false], // kick
+    [false, false, false, false, false, true, false, false, false, false, false, false, false, true, false, false], // snare
+    [false, true, true, true, false, true, true, true, false, true, true, true, false, true, true, true], // hihat
+    [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] // clap
+  ],
+  reggae: [
+    [true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, false], // kick
+    [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // snare
+    [false, false, false, true, false, false, false, true, false, false, false, true, false, false, false, true], // hihat
+    [false, false, true, false, false, false, true, false, false, false, true, false, false, false, true, false] // clap
+  ],
+  trap: [
+    [true, false, false, false, false, false, false, true, false, false, true, false, false, false, false, false], // kick
+    [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // snare
+    [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true], // hihat (fast)
+    [false, false, false, false, false, false, false, false, false, false, false, false, false, false, true, true] // clap
+  ],
+  breakbeat: [
+    [true, false, false, false, false, true, false, false, true, false, false, false, false, true, true, false], // kick
+    [false, false, true, false, true, false, false, true, false, false, true, false, true, false, false, false], // snare
+    [true, false, true, true, false, true, true, false, true, false, true, true, false, true, true, false], // hihat
+    [false, true, false, false, false, false, false, false, false, true, false, false, false, false, false, true] // clap
+  ],
+  dubstep: [
+    [true, false, false, false, false, false, false, false, true, false, false, false, false, false, false, true], // kick
+    [false, false, false, false, true, false, false, false, false, false, false, false, true, false, false, false], // snare
+    [true, true, true, true, true, true, true, true, true, true, true, true, true, true, true, true], // hihat
+    [false, false, false, false, false, false, true, false, false, false, false, false, false, false, true, false] // clap
   ]
 };
 
@@ -159,163 +190,6 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     return audioContext.current;
   }, []);
   
-  // Generate enhanced drum sounds programmatically
-  const createEnhancedDrumSound = async (type: string, context: AudioContext): Promise<AudioBuffer> => {
-    // Create a buffer for the sound
-    let buffer: AudioBuffer;
-    const sampleRate = context.sampleRate;
-    
-    switch (type) {
-      case "kick": {
-        // Enhanced kick drum with sub frequencies and better attack
-        buffer = context.createBuffer(2, sampleRate * 0.6, sampleRate);
-        const dataLeft = buffer.getChannelData(0);
-        const dataRight = buffer.getChannelData(1);
-        
-        for (let i = 0; i < dataLeft.length; i++) {
-          const t = i / sampleRate;
-          // Main frequency sweep
-          const frequency = 120 * Math.exp(-25 * t);
-          // Add punch at the start
-          const punchEnv = Math.exp(-200 * t);
-          const punch = Math.sin(2 * Math.PI * 180 * t) * punchEnv * 0.5;
-          // Add sub bass
-          const subFreq = 60 * Math.exp(-15 * t);
-          const sub = Math.sin(2 * Math.PI * subFreq * t) * 0.6;
-          
-          const mainSound = Math.sin(2 * Math.PI * frequency * t) * Math.exp(-15 * t);
-          
-          // Combine components
-          const combined = mainSound * 0.7 + punch * 0.2 + sub * 0.3;
-          
-          // Apply envelope
-          const env = Math.exp(-8 * t);
-          
-          // Slight stereo variation
-          dataLeft[i] = combined * env;
-          dataRight[i] = combined * env * 0.98; // Slight stereo effect
-        }
-        break;
-      }
-      case "snare": {
-        // Enhanced snare with body and noise components
-        buffer = context.createBuffer(2, sampleRate * 0.4, sampleRate);
-        const dataLeft = buffer.getChannelData(0);
-        const dataRight = buffer.getChannelData(1);
-        
-        for (let i = 0; i < dataLeft.length; i++) {
-          const t = i / sampleRate;
-          
-          // Body component (tone)
-          let toneEnv = Math.exp(-30 * t);
-          const tone1 = Math.sin(2 * Math.PI * 180 * t) * toneEnv * 0.5;
-          const tone2 = Math.sin(2 * Math.PI * 330 * t) * toneEnv * 0.3;
-          
-          // Noise component with filter simulation
-          const noise = (Math.random() * 2 - 1);
-          const noiseHP = noise - (Math.random() * 2 - 1) * 0.2; // Crude highpass
-          const noiseEnv = Math.exp(-t * 20);
-          
-          // Combine components
-          dataLeft[i] = (tone1 + tone2) * 0.3 + noiseHP * noiseEnv * 0.7;
-          
-          // Slight stereo variation for realism
-          dataRight[i] = (tone1 + tone2) * 0.32 + noiseHP * noiseEnv * 0.68 * 
-            (1 + (Math.random() * 0.05 - 0.025)); // Small random variation
-        }
-        break;
-      }
-      case "hihat": {
-        // Enhanced hi-hat with better filtering and resonance
-        buffer = context.createBuffer(2, sampleRate * 0.2, sampleRate);
-        const dataLeft = buffer.getChannelData(0);
-        const dataRight = buffer.getChannelData(1);
-        
-        // Create a bandpass filtered noise
-        for (let i = 0; i < dataLeft.length; i++) {
-          const t = i / sampleRate;
-          
-          // Generate filtered noise
-          let noise = 0;
-          // Add multiple frequency bands for a more metallic sound
-          for (let j = 0; j < 5; j++) {
-            const freq = 5000 + j * 2000; // Different bands from 5-13kHz
-            noise += Math.sin(2 * Math.PI * freq * t + Math.random() * 0.2) * 0.1;
-          }
-          
-          // Add some white noise
-          noise += (Math.random() * 2 - 1) * 0.5;
-          
-          // Apply envelope - very fast attack and decay
-          const env = Math.exp(-t * (t < 0.005 ? 20 : 80));
-          
-          // Output with stereo width
-          dataLeft[i] = noise * env;
-          dataRight[i] = noise * env * 0.95; // Slight stereo effect
-        }
-        break;
-      }
-      case "clap": {
-        // Enhanced clap with multiple transients
-        buffer = context.createBuffer(2, sampleRate * 0.4, sampleRate);
-        const dataLeft = buffer.getChannelData(0);
-        const dataRight = buffer.getChannelData(1);
-        
-        for (let i = 0; i < dataLeft.length; i++) {
-          const t = i / sampleRate;
-          let env = 0;
-          
-          // Create multiple "clap" transients
-          if (t < 0.001) env = t / 0.001;
-          else if (t < 0.008) env = 1 - (t - 0.001) / 0.007;
-          else if (t < 0.009) env = 0;
-          else if (t < 0.011) env = (t - 0.009) / 0.002;
-          else if (t < 0.02) env = 1 - (t - 0.011) / 0.009;
-          else if (t < 0.021) env = 0;
-          else if (t < 0.022) env = (t - 0.021) / 0.001;
-          else if (t < 0.03) env = 1 - (t - 0.022) / 0.008;
-          else if (t < 0.031) env = 0;
-          else if (t < 0.032) env = (t - 0.031) / 0.001;
-          
-          // Long decay
-          if (t >= 0.032) env = Math.exp(-(t - 0.032) * 15) * 0.8;
-          
-          // Band-limited noise
-          let noise = 0;
-          for (let j = 0; j < 10; j++) {
-            // Focus on mid-high frequencies
-            noise += Math.sin(2 * Math.PI * (1000 + j * 1000) * t * (1 + Math.random() * 0.1)) * 0.1;
-          }
-          noise += (Math.random() * 2 - 1) * 0.3;
-          
-          // Apply envelope and compress a bit
-          const signal = noise * env;
-          const compressed = signal * (1 - Math.max(0, signal - 0.8) * 0.5);
-          
-          // Subtle stereo spreading
-          dataLeft[i] = compressed;
-          dataRight[i] = compressed * (1 + (Math.random() * 0.1 - 0.05));
-        }
-        break;
-      }
-      default: {
-        // Default to a simple tone
-        buffer = context.createBuffer(2, sampleRate * 0.2, sampleRate);
-        const dataLeft = buffer.getChannelData(0);
-        const dataRight = buffer.getChannelData(1);
-        
-        for (let i = 0; i < dataLeft.length; i++) {
-          const t = i / sampleRate;
-          const signal = Math.sin(2 * Math.PI * 440 * t) * Math.exp(-10 * t);
-          dataLeft[i] = signal;
-          dataRight[i] = signal;
-        }
-      }
-    }
-    
-    return buffer;
-  };
-  
   // Play a drum sound with enhanced processing
   const playSound = useCallback((soundId: string) => {
     if (!audioContext.current || !soundBuffers.current[soundId]) return;
@@ -384,9 +258,13 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     if (DRUM_PATTERNS[patternName as keyof typeof DRUM_PATTERNS]) {
       const newPattern = DRUM_PATTERNS[patternName as keyof typeof DRUM_PATTERNS];
       setPattern(newPattern);
+      setLoadedPattern(patternName); // Track which pattern is currently loaded
       if (onPatternChange) {
         onPatternChange(generatePatternQuery(newPattern));
       }
+      
+      // Show feedback when a pattern is loaded
+      console.log(`Loaded ${patternName} pattern`);
     }
   }, [onPatternChange]);
   
@@ -738,6 +616,43 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
                   className="transition-all duration-200"
                 >
                   Jazz Rhythm
+                </Button>
+                
+                {/* New patterns */}
+                <Button 
+                  variant="outline" 
+                  onClick={() => loadPattern('latin')}
+                  className="transition-all duration-200"
+                >
+                  Latin Groove
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => loadPattern('reggae')}
+                  className="transition-all duration-200"
+                >
+                  Reggae Rhythm
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => loadPattern('trap')}
+                  className="transition-all duration-200"
+                >
+                  Trap Beat
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => loadPattern('breakbeat')}
+                  className="transition-all duration-200"
+                >
+                  Breakbeat
+                </Button>
+                <Button 
+                  variant="outline" 
+                  onClick={() => loadPattern('dubstep')}
+                  className="transition-all duration-200"
+                >
+                  Dubstep Beat
                 </Button>
               </div>
 

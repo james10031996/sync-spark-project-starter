@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Music, Plus } from "lucide-react";
+import { Play, Music, Plus, Trash } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -23,6 +23,58 @@ import {
 interface ChordProgressionPlayerProps {
   className?: string;
 }
+
+// Add more chord progression patterns for different music styles
+const CHORD_PATTERNS = {
+  Pop: [
+    { root: "C", type: "major" },
+    { root: "G", type: "major" },
+    { root: "A", type: "minor" },
+    { root: "F", type: "major" },
+  ],
+  Jazz: [
+    { root: "D", type: "min7" },
+    { root: "G", type: "7" },
+    { root: "C", type: "maj7" },
+    { root: "A", type: "min7" },
+  ],
+  Blues: [
+    { root: "A", type: "7" },
+    { root: "D", type: "7" },
+    { root: "E", type: "7" },
+    { root: "A", type: "7" },
+  ],
+  Rock: [
+    { root: "E", type: "major" },
+    { root: "D", type: "major" },
+    { root: "A", type: "major" },
+    { root: "E", type: "major" },
+  ],
+  Folk: [
+    { root: "G", type: "major" },
+    { root: "C", type: "major" },
+    { root: "D", type: "major" },
+    { root: "G", type: "major" },
+  ],
+  RnB: [
+    { root: "F#", type: "minor" },
+    { root: "D", type: "major" },
+    { root: "E", type: "major" },
+    { root: "C#", type: "minor" },
+  ],
+  EDM: [
+    { root: "C", type: "major" },
+    { root: "G", type: "major" },
+    { root: "F", type: "major" },
+    { root: "G", type: "7" },
+  ],
+  Classical: [
+    { root: "C", type: "major" },
+    { root: "A", type: "minor" },
+    { root: "F", type: "major" },
+    { root: "G", type: "7" },
+  ],
+};
 
 /**
  * A component for playing chord progressions with multiple sections
@@ -124,14 +176,14 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
   };
 
   // Handle playing a chord with section-specific or global instruments
-  const handlePlayChord = (chord: ChordInProgression, sectionIndex: number = 0) => {
+  const handlePlayChord = useCallback((chord: ChordInProgression, sectionIndex: number = 0) => {
     const section = sections[sectionIndex];
     const instrumentsToUse = section.instruments && section.instruments.length > 0
       ? section.instruments
       : Object.keys(activeInstruments).filter(inst => activeInstruments[inst]);
       
     playChord(chord, instrumentsToUse, pattern);
-  };
+  }, [sections, activeInstruments, pattern, playChord]);
 
   // Stop playback
   const stopPlayback = () => {
@@ -224,53 +276,90 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     });
   };
 
-  // Generate random chord progression based on selected pattern
+  // Generate chord progression based on selected pattern
   const generateChords = () => {
-    setSections(prevSections => {
-      return prevSections.map(section => {
-        // Generate random chords for each section
-        const randomChords: ChordInProgression[] = [];
-        
-        // Generate 4 random chords
-        for (let i = 0; i < 4; i++) {
-          randomChords.push({
-            root: rootNotes[Math.floor(Math.random() * rootNotes.length)],
-            type: chordTypes[Math.floor(Math.random() * chordTypes.length)].id
-          });
-        }
-        
-        return {
-          ...section,
-          chords: randomChords
-        };
+    if (CHORD_PATTERNS[pattern as keyof typeof CHORD_PATTERNS]) {
+      const patternChords = CHORD_PATTERNS[pattern as keyof typeof CHORD_PATTERNS];
+      
+      setSections(prevSections => {
+        return prevSections.map(section => {
+          return {
+            ...section,
+            chords: [...patternChords] // Use the selected pattern
+          };
+        });
       });
-    });
-    
-    toast({
-      title: `${pattern} progression generated`,
-      description: "Random chord progressions have been created for all sections.",
-    });
+      
+      toast({
+        title: `${pattern} progression generated`,
+        description: "Pre-defined chord progressions have been applied to all sections.",
+      });
+    } else {
+      // Original random chord generation if the pattern doesn't exist
+      setSections(prevSections => {
+        return prevSections.map(section => {
+          // Generate random chords for each section
+          const randomChords: ChordInProgression[] = [];
+          
+          // Generate 4 random chords
+          for (let i = 0; i < 4; i++) {
+            randomChords.push({
+              root: rootNotes[Math.floor(Math.random() * rootNotes.length)],
+              type: chordTypes[Math.floor(Math.random() * chordTypes.length)].id
+            });
+          }
+          
+          return {
+            ...section,
+            chords: randomChords
+          };
+        });
+      });
+      
+      toast({
+        title: "Random progressions generated",
+        description: "Random chord progressions have been created for all sections.",
+      });
+    }
   };
 
   // Toggle instrument on/off
   const toggleInstrument = (instrument: string) => {
-    setActiveInstruments(prev => ({
-      ...prev,
-      [instrument]: !prev[instrument]
-    }));
+    setActiveInstruments(prev => {
+      const updated = {
+        ...prev,
+        [instrument]: !prev[instrument]
+      };
+      
+      // If we're playing, immediately update the sound
+      if (playing && currentSection >= 0 && currentChord >= 0) {
+        const chord = sections[currentSection].chords[currentChord];
+        const instrumentsToUse = Object.keys(updated).filter(inst => updated[inst]);
+        playChord(chord, instrumentsToUse, pattern);
+      }
+      
+      return updated;
+    });
   };
 
   // Update instruments for a specific section
-  const updateSectionInstruments = (sectionIndex: number, instruments: string[]) => {
+  const updateSectionInstruments = useCallback((sectionIndex: number, instruments: string[]) => {
     setSections(prevSections => {
       const updatedSections = [...prevSections];
       updatedSections[sectionIndex] = {
         ...updatedSections[sectionIndex],
         instruments: instruments
       };
+      
+      // If we're playing this section, update the sound immediately
+      if (playing && currentSection === sectionIndex && currentChord >= 0) {
+        const chord = updatedSections[sectionIndex].chords[currentChord];
+        playChord(chord, instruments, pattern);
+      }
+      
       return updatedSections;
     });
-  };
+  }, [playing, currentSection, currentChord, playChord, pattern]);
 
   // Clean up on unmount
   useEffect(() => {
@@ -322,6 +411,11 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
             <SelectItem value="Pop">Pop</SelectItem>
             <SelectItem value="Jazz">Jazz</SelectItem>
             <SelectItem value="Blues">Blues</SelectItem>
+            <SelectItem value="Rock">Rock</SelectItem>
+            <SelectItem value="Folk">Folk</SelectItem>
+            <SelectItem value="RnB">R&B</SelectItem>
+            <SelectItem value="EDM">EDM</SelectItem>
+            <SelectItem value="Classical">Classical</SelectItem>
           </SelectContent>
         </Select>
 
@@ -350,21 +444,35 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
           {/* Chord Sections */}
           <div className="space-y-6">
             {sections.map((section, sectionIndex) => (
-              <ChordSection
-                key={section.id}
-                section={section}
-                sectionIndex={sectionIndex}
-                isPlaying={playing && currentSection === sectionIndex}
-                currentChord={currentChord}
-                updateChord={(chordIndex, newChord) => updateChord(sectionIndex, chordIndex, newChord)}
-                playChord={(chord) => handlePlayChord(chord, sectionIndex)}
-                onAddChord={() => addChordToSection(sectionIndex)}
-                onRemoveSection={() => removeSection(sectionIndex)}
-                allInstruments={availableInstruments}
-                updateSectionInstruments={(instruments) => updateSectionInstruments(sectionIndex, instruments)}
-                sectionRepeat={1}
-                updateSectionRepeat={() => {}}
-              />
+              <div key={section.id} className="relative">
+                <ChordSection
+                  section={section}
+                  sectionIndex={sectionIndex}
+                  isPlaying={playing && currentSection === sectionIndex}
+                  currentChord={currentChord}
+                  updateChord={(chordIndex, newChord) => updateChord(sectionIndex, chordIndex, newChord)}
+                  playChord={(chord) => handlePlayChord(chord, sectionIndex)}
+                  onAddChord={() => addChordToSection(sectionIndex)}
+                  onRemoveSection={() => removeSection(sectionIndex)}
+                  allInstruments={availableInstruments}
+                  updateSectionInstruments={(instruments) => updateSectionInstruments(sectionIndex, instruments)}
+                  sectionRepeat={1}
+                  updateSectionRepeat={() => {}}
+                />
+                
+                {/* Add Remove button at the top right */}
+                {sections.length > 1 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    className="absolute top-0 right-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => removeSection(sectionIndex)}
+                  >
+                    <Trash className="h-4 w-4 mr-1" />
+                    Remove
+                  </Button>
+                )}
+              </div>
             ))}
             
             <Button 
