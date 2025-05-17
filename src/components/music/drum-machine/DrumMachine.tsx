@@ -15,8 +15,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-
-
 // Define drum sounds with enhanced options
 const DRUM_SOUNDS = [
   { id: "kick", name: "Kick", color: "bg-red-500" },
@@ -57,7 +55,6 @@ const DRUM_PATTERNS = {
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false], //ride
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false],  //piano
     [false, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false] // clap
-  
   ],
   funk: [
     [true, false, false, true, false, false, true, false, false, false, true, false, false, true, false, false], // kick
@@ -309,12 +306,13 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     }
   }, [onPatternChange]);
   
-  // Load a predefined pattern
+  // Load a predefined pattern - Fixed to apply pattern immediately without requiring another click
   const loadPattern = useCallback((patternName: string) => {
     if (DRUM_PATTERNS[patternName as keyof typeof DRUM_PATTERNS]) {
       const newPattern = DRUM_PATTERNS[patternName as keyof typeof DRUM_PATTERNS];
       setPattern(newPattern);
       setLoadedPattern(patternName); // Track which pattern is currently loaded
+      
       if (onPatternChange) {
         onPatternChange(generatePatternQuery(newPattern));
       }

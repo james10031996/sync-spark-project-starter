@@ -8,7 +8,6 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ChordSection } from "@/components/music/ChordProgressionPlayer/ChordSection";
 import { toast } from "@/hooks/use-toast";
-import { Slider } from "@/components/ui/slider";
 import { useChordPlayer } from "@/components/music/ChordProgressionPlayer/hooks/useChordPlayer";
 import { 
   ChordInProgression, 
@@ -82,11 +81,10 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     synth: false,
     organ: false
   });
-  const [volume, setVolume] = useState<number>(80);
   
   // Audio context and timer references
   const intervalRef = useRef<number | null>(null);
-  const { playChord, initAudioContext, stopAllSounds } = useChordPlayer(volume);
+  const { playChord, initAudioContext, stopAllSounds } = useChordPlayer();
 
   // Start/stop playback
   const togglePlayback = () => {
@@ -251,30 +249,37 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
     });
   };
 
-  // Generate chord progression based on selected pattern
+  // Generate random chord progression
   const generateChords = () => {
-    if (CHORD_PATTERNS[pattern as keyof typeof CHORD_PATTERNS]) {
-      const patternChords = CHORD_PATTERNS[pattern as keyof typeof CHORD_PATTERNS];
-      
-      setSections(prevSections => {
-        return prevSections.map(section => {
-          return {
-            ...section,
-            chords: [...patternChords] // Use the selected pattern
-          };
-        });
+    // Create a function to get a random chord
+    const getRandomChord = (): ChordInProgression => {
+      const randomRoot = rootNotes[Math.floor(Math.random() * rootNotes.length)];
+      const randomType = chordTypes[Math.floor(Math.random() * chordTypes.length)].id;
+      return { root: randomRoot, type: randomType };
+    };
+    
+    // Generate random chords for each section
+    setSections(prevSections => {
+      return prevSections.map(section => {
+        // Create an array of random chords matching the current length
+        const randomChords = Array(section.chords.length).fill(null).map(() => getRandomChord());
+        
+        return {
+          ...section,
+          chords: randomChords
+        };
       });
-      
-      toast({
-        title: `${pattern} progression generated`,
-        description: "Pre-defined chord progressions have been applied to all sections.",
-      });
-      
-      // If currently playing, update sound immediately
-      if (playing && currentSection >= 0 && currentChord >= 0) {
-        const chord = patternChords[currentChord % patternChords.length];
-        handlePlayChord(chord, currentSection);
-      }
+    });
+    
+    toast({
+      title: "Random progression generated",
+      description: "Random chord progressions have been applied to all sections.",
+    });
+    
+    // If currently playing, update sound immediately
+    if (playing && currentSection >= 0 && currentChord >= 0) {
+      const randomChord = getRandomChord();
+      handlePlayChord(randomChord, currentSection);
     }
   };
 
@@ -374,20 +379,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
         <Button variant="outline" onClick={generateChords} className="transition-all hover:bg-primary/10">
           Generate chords
         </Button>
-        
-        <div className="flex items-center gap-2 ml-auto">
-          <div className="flex items-center gap-2">
-            <Music className="h-4 w-4" />
-            <Slider
-              min={0}
-              max={100}
-              step={1}
-              value={[volume]}
-              onValueChange={(value) => setVolume(value[0])}
-              className="w-24 transition-all hover:scale-[1.01]"
-            />
-          </div>
-        </div>
       </div>
 
       {/* Main content */}
@@ -421,7 +412,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
                     onClick={() => removeSection(sectionIndex)}
                   >
                     <Trash />
-                    {/* Remove */}
                   </Button>
                 )}
               </div>
@@ -454,8 +444,6 @@ const ChordProgressionPlayer: React.FC<ChordProgressionPlayerProps> = ({
             </div>
           </div>
         </CardContent>
-
-        
       </Card>
     </div>
   );
