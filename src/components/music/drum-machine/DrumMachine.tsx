@@ -585,66 +585,60 @@ const drumPatterns = [
             <Button 
               variant="outline" 
               onClick={clearPattern}
-              className="relative  px-4 py-2 rounded-lg text-white bg-gradient-to-r from-violet-600 to-purple-700 overflow-hidden hover:brightness-125 transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]"
+              className="relative px-4 py-2 rounded-lg text-white bg-gradient-to-r from-violet-600 to-purple-700 overflow-hidden hover:brightness-125 transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]"
             >
               Clear Pattern
             </Button>
             <Button 
-  size="lg"
-  onClick={togglePlayback}
-  className={`px-4 py-2 rounded-lg transition-all hover:scale-105 mb-6
-    ${
-      playing
-        ? 'bg-gradient-to-r from-red-500 to-red-700 text-white hover:brightness-110 '
-        : 'bg-gradient-to-r from-purple-500 to-violet-700 text-white animate-pulse hover:animate-none'
-    }`}
->
-  {playing ? (
-    <>
-      <Square className="md:mr-2 h-4 w-4" /> Stop
-    </>
-  ) : (
-    <>
-      <Play className="md:mr-2 h-4 w-4" /> Start
-    </>
-  )}
-</Button>
-
-            {/* <Button 
-              variant="outline" 
-              onClick={() => loadPattern('basic')}
-              className="transition-all duration-200 hover:bg-primary/10"
+              size="lg"
+              onClick={togglePlayback}
+              className={`px-4 py-2 rounded-lg transition-all hover:scale-105 mb-6
+                ${
+                  playing
+                    ? 'bg-gradient-to-r from-red-500 to-red-700 text-white hover:brightness-110 '
+                    : 'bg-gradient-to-r from-purple-500 to-violet-700 text-white animate-pulse hover:animate-none'
+                }`}
             >
-              Basic Beat
-            </Button> */}
+              {playing ? (
+                <>
+                  <Square className="md:mr-2 h-4 w-4" /> Stop
+                </>
+              ) : (
+                <>
+                  <Play className="md:mr-2 h-4 w-4" /> Start
+                </>
+              )}
+            </Button>
 
+            {/* Beat pattern selection dialog - FIXED to apply pattern immediately on click */}
             <Dialog open={open} onOpenChange={setOpen}>
-  <DialogTrigger asChild>
-    <Button variant="outline" className="relative  px-4 py-2 rounded-lg text-white bg-gradient-to-r from-violet-600 to-purple-700 overflow-hidden hover:brightness-125 transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]" onClick={() => setOpen(true)}>Select Beat</Button>
-  </DialogTrigger>
+              <DialogTrigger asChild>
+                <Button variant="outline" className="relative px-4 py-2 rounded-lg text-white bg-gradient-to-r from-violet-600 to-purple-700 overflow-hidden hover:brightness-125 transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]" onClick={() => setOpen(true)}>Select Beat</Button>
+              </DialogTrigger>
 
-  <DialogContent className="sm:max-w-md">
-    <DialogHeader>
-      <DialogTitle>Select a Beat Pattern</DialogTitle>
-    </DialogHeader>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle>Select a Beat Pattern</DialogTitle>
+                </DialogHeader>
 
-    <div className="grid grid-cols-2 gap-2 mt-4">
-      {drumPatterns.map((pattern) => (
-        <Button
-          key={pattern.key}
-          onClick={() => {
-            loadPattern(pattern.key);
-            setOpen(false); // close modal after selection
-          }}
-          className={`w-full ${pattern.color} border border-muted shadow-sm`}
-          variant="outline"
-        >
-          {pattern.name}
-        </Button>
-      ))}
-    </div>
-  </DialogContent>
-</Dialog>
+                <div className="grid grid-cols-2 gap-2 mt-4">
+                  {drumPatterns.map((pattern) => (
+                    <Button
+                      key={pattern.key}
+                      onClick={() => {
+                        // Apply pattern immediately - fixed the double-click issue
+                        loadPattern(pattern.key);
+                        setOpen(false); // close modal after selection
+                      }}
+                      className={`w-full ${pattern.color} border border-muted shadow-sm`}
+                      variant="outline"
+                    >
+                      {pattern.name}
+                    </Button>
+                  ))}
+                </div>
+              </DialogContent>
+            </Dialog>
 
           </div>
         </div>
