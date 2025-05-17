@@ -306,12 +306,14 @@ const DrumMachine: React.FC<DrumMachineProps> = ({
     }
   }, [onPatternChange]);
   
-  // Load a predefined pattern - Fixed to apply pattern immediately without requiring another click
+  // Modified loadPattern function to properly apply pattern immediately
   const loadPattern = useCallback((patternName: string) => {
     if (DRUM_PATTERNS[patternName as keyof typeof DRUM_PATTERNS]) {
       const newPattern = DRUM_PATTERNS[patternName as keyof typeof DRUM_PATTERNS];
+      
+      // Directly set the pattern
       setPattern(newPattern);
-      setLoadedPattern(patternName); // Track which pattern is currently loaded
+      setLoadedPattern(patternName);
       
       if (onPatternChange) {
         onPatternChange(generatePatternQuery(newPattern));
@@ -610,7 +612,7 @@ const drumPatterns = [
               )}
             </Button>
 
-            {/* Beat pattern selection dialog - FIXED to apply pattern immediately on click */}
+            {/* Beat pattern selection dialog */}
             <Dialog open={open} onOpenChange={setOpen}>
               <DialogTrigger asChild>
                 <Button variant="outline" className="relative px-4 py-2 rounded-lg text-white bg-gradient-to-r from-violet-600 to-purple-700 overflow-hidden hover:brightness-125 transition-all duration-300 hover:shadow-[0_0_20px_rgba(139,92,246,0.6)]" onClick={() => setOpen(true)}>Select Beat</Button>
@@ -626,9 +628,8 @@ const drumPatterns = [
                     <Button
                       key={pattern.key}
                       onClick={() => {
-                        // Apply pattern immediately - fixed the double-click issue
                         loadPattern(pattern.key);
-                        setOpen(false); // close modal after selection
+                        setOpen(false);
                       }}
                       className={`w-full ${pattern.color} border border-muted shadow-sm`}
                       variant="outline"
@@ -639,7 +640,6 @@ const drumPatterns = [
                 </div>
               </DialogContent>
             </Dialog>
-
           </div>
         </div>
       </CardContent>
