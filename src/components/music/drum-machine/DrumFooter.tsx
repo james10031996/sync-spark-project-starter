@@ -92,3 +92,17 @@ export const DrumFooter = () => {
       </div>
   );
 };
+
+
+
+
+// analyse, think and then do one by one and do not touch any other file
+
+// sync with github
+
+// in drum machine -
+// resolve issue - when i click on any beat pattern button then it clear pattern, then i need to click on same beat pattern button, then pattern applies - fix this issue. beat pattern should apply as soon as i click on any beat pattern button 
+
+// in chord-progression -
+// clicking on Generate chords button should generate random chord
+// fix - clicking on Default instruments in section should open dropdown
